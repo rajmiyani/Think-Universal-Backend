@@ -1,25 +1,29 @@
-// router/appointment.router.js
 import express from 'express';
 import {
-  createAppointment,
+  getAppointments,
   getAppointmentsByDoctor,
-  updateAppointmentStatus,
-  addPrescription,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment,
+  exportCSV,
+  // getAppointmentById,
+  // updateAppointmentStatus
 } from '../controllers/appointment.controller.js';
+
 import { verifyToken, authorizeRoles } from '../middleware/admin.middlware.js';
 
 const router = express.Router();
 
-// Patients and admins can create appointments
-router.post('/create', verifyToken, authorizeRoles('patient', 'admin'), createAppointment);
+// Routes
+router.get("/getAppointments", getAppointments);
+router.get("/doctor/:doctorId", verifyToken, authorizeRoles('doctor', 'admin'), getAppointmentsByDoctor);
+router.post('/createAppointment', verifyToken, authorizeRoles('patient', 'admin'), createAppointment);
+router.put('/updateAppointment/:id', verifyToken, authorizeRoles('admin', 'doctor'), updateAppointment);
+router.delete('/deleteAppointment/:id', verifyToken, authorizeRoles('admin'), deleteAppointment);
+router.get("/export/csv", exportCSV);
 
-// Doctors and admins can view appointments for a doctor
-router.get('/doctor/:doctorId', verifyToken, authorizeRoles('doctor', 'admin'), getAppointmentsByDoctor);
-
-// Doctors and admins can update appointment status
-router.put('/status/:id', verifyToken, authorizeRoles('doctor', 'admin'), updateAppointmentStatus);
-
-// Doctors can add prescription to an appointment
-router.post('/prescription/:id', verifyToken, authorizeRoles('doctor'), addPrescription);
+// Add these if they exist in controller
+// router.get("/getAppointmentById/:id", getAppointmentById);
+// router.put("/status/:id", updateAppointmentStatus);
 
 export default router;

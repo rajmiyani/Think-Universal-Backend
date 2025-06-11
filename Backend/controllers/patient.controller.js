@@ -15,34 +15,24 @@ const patientSchema = Joi.object({
 
 
 
-export const addPatient = async (req, res) => {
-    try {
-        // Validate input
-        const { error, value } = patientSchema.validate(req.body, { abortEarly: false });
-        if (error) {
-            return res.status(400).json({ success: false, message: error.details.map(d => d.message).join(', ') });
-        }
-
-        // Check for duplicate email
-        const existing = await Patient.findOne({ email: value.email });
-        if (existing) {
-            return res.status(409).json({ success: false, message: 'Email already exists' });
-        }
-
-        const patient = await Patient.create(value);
-        res.status(201).json({ success: true, patient });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
 export const getAllPatients = async (req, res) => {
-    try {
-        const patients = await Patient.find();
-        res.status(200).json({ success: true, patients });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+  try {
+    const { page = 1, limit = 5, filter = "" } = req.query;
+
+    const query = {
+      name: { $regex: filter, $options: "i" } // Case-insensitive name filter
+    };
+
+    const total = await Patient.countDocuments(query);
+    const patients = await Patient.find(query)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    res.status(200).json({ patients, total });
+  } catch (err) {
+    console.error("❌ Error fetching patients:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 export const getPatientById = async (req, res) => {

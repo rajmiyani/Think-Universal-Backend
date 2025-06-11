@@ -15,6 +15,8 @@ const DOCTOR_PASSWORD = "Doctor@123";
 export const loginDoctor = async (req, res) => {
     try {
         const { doctor_info, doctor_pass } = req.body;
+        console.log(req.body);
+        
 
         if (!doctor_info || !doctor_pass) {
             return res.status(400).json({ message: "Email/Phone and password are required" });
@@ -25,6 +27,8 @@ export const loginDoctor = async (req, res) => {
         }
 
         const doctor = await authModel.findOne({ email: DOCTOR_EMAIL });
+        console.log("Doctor", doctor);
+        
 
         if (!doctor) {
             return res.status(404).json({ message: "Doctor not found" });

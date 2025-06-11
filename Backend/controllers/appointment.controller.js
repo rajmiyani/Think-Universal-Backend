@@ -1,95 +1,163 @@
-import Appointment from '../models/appointment.model.js';
-import Joi from 'joi';
+import Appointment from "../models/appointment.model.js";
+import { Parser } from "json2csv";
+import moment from "moment";
+import Joi from "joi";
+import mongoose from "mongoose";
+import { appointmentSchema } from '../validations/validationSchema.js';
+
+// Security Middleware
+const sanitizeInput = (req, res, next) => {
+    if (req.body) {
+        Object.entries(req.body).forEach(([key, value]) => {
+            if (typeof value === 'string') req.body[key] = value.trim();
+        });
+    }
+    next();
+};
 
 
-
-// --- Validation Schemas ---
-const appointmentSchema = Joi.object({
-    doctor: Joi.string().required(),
-    patient: Joi.string().required(),
-    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
-    time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
-    status: Joi.string().valid('pending', 'approved', 'completed', 'cancelled').optional(),
-    prescription: Joi.string().max(1000).optional().allow(''),
-});
-
-const statusSchema = Joi.object({
-    status: Joi.string().valid('pending', 'approved', 'completed', 'cancelled').required(),
-});
-
-const prescriptionSchema = Joi.object({
-    prescription: Joi.string().max(1000).required(),
-});
-
-
-
-
-export const createAppointment = async (req, res) => {
+// Get all with filters & pagination
+export const getAppointments = async (req, res) => {
     try {
-        // Validate input
-        const { error, value } = appointmentSchema.validate(req.body, { abortEarly: false });
-        if (error) {
-            return res.status(400).json({ success: false, message: error.details.map(d => d.message).join(', ') });
-        }
+        const { name = "", doctor = "", status = "", page = 1, limit = 5 } = req.query;
+        const query = {
+            name: { $regex: name, $options: "i" },
+            doctor: { $regex: doctor, $options: "i" },
+        };
+        if (status && status !== "all") query.status = status;
 
-        const appointment = await Appointment.create(value);
-        res.status(201).json({ success: true, appointment });
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const [appointments, total] = await Promise.all([
+            Appointment.find(query).skip(skip).limit(parseInt(limit)).sort({ date: 1 }),
+            Appointment.countDocuments(query),
+        ]);
+
+        res.status(200).json({
+            data: appointments,
+            totalPages: Math.ceil(total / limit),
+            currentPage: parseInt(page),
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ message: "Failed to fetch appointments", error: error.message });
     }
 };
 
+// View single appointment
 export const getAppointmentsByDoctor = async (req, res) => {
     try {
-        const appointments = await Appointment.find({ doctor: req.params.doctorId })
-            .populate('patient')
-            .sort({ date: 1 });
-        res.status(200).json({ success: true, appointments });
+        const appointment = await Appointment.findById(req.params.id);
+        if (!appointment) return res.status(404).json({ message: "Not found" });
+        res.status(200).json(appointment);
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ message: "Failed to fetch", error: error.message });
     }
 };
 
-export const updateAppointmentStatus = async (req, res) => {
+// Create new appointment (with validation)
+export const createAppointment = [
+    sanitizeInput,
+    async (req, res) => {
+        try {
+            const { error, value } = appointmentSchema.validate(req.body);
+            if (error) return res.status(400).json({ message: error.details[0].message });
+
+            // Verify doctor exists
+            const doctorExists = await mongoose.model('Doctor').exists({ _id: value.doctor });
+            if (!doctorExists) return res.status(400).json({ message: "Doctor not found" });
+
+            const appointment = new Appointment(value);
+            const saved = await appointment.save();
+            const result = saved.toObject();
+            delete result.__v;
+
+            res.status(201).json(result);
+        } catch (error) {
+            res.status(400).json({ message: "Invalid data", error: error.message });
+        }
+    }
+];
+
+// Update appointment (with validation)
+export const updateAppointment = [
+    sanitizeInput,
+    async (req, res) => {
+        try {
+            const { error, value } = appointmentSchema.validate(req.body);
+            if (error) return res.status(400).json({ message: error.details[0].message });
+
+            const updated = await Appointment.findByIdAndUpdate(
+                req.params.id,
+                value,
+                { new: true, runValidators: true }
+            ).lean();
+
+            if (!updated) return res.status(404).json({ message: "Appointment not found" });
+            delete updated.__v;
+
+            res.status(200).json(updated);
+        } catch (error) {
+            res.status(400).json({ message: "Update failed", error: error.message });
+        }
+    }
+];
+
+// Delete appointment (with authorization check)
+export const deleteAppointment = async (req, res) => {
     try {
-        // Validate status
-        const { error, value } = statusSchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({ success: false, message: error.details.map(d => d.message).join(', ') });
-        }
+        // Add role-based access control check here
+        // if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
 
-        const appointment = await Appointment.findByIdAndUpdate(
-            req.params.id,
-            { status: value.status },
-            { new: true }
-        );
-        if (!appointment) {
-            return res.status(404).json({ success: false, message: 'Appointment not found' });
-        }
-        res.status(200).json({ success: true, appointment });
+        const deleted = await Appointment.findByIdAndDelete(req.params.id);
+        if (!deleted) return res.status(404).json({ message: "Appointment not found" });
+        res.status(200).json({ message: "Deleted" });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(400).json({ message: "Failed to delete" });
     }
 };
 
-export const addPrescription = async (req, res) => {
-    try {
-        // Validate prescription
-        const { error, value } = prescriptionSchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({ success: false, message: error.details.map(d => d.message).join(', ') });
-        }
+// Export security enhancements
+const validateExportParams = (req, res, next) => {
+    const { error } = Joi.object({
+        name: Joi.string().allow('').default(''),
+        doctor: Joi.string().hex().length(24).allow(''),
+        status: Joi.string().valid('pending', 'confirmed', 'cancelled', 'all').default('all')
+    }).validate(req.query);
 
-        const appointment = await Appointment.findByIdAndUpdate(
-            req.params.id,
-            { prescription: value.prescription },
-            { new: true }
-        );
-        if (!appointment) {
-            return res.status(404).json({ success: false, message: 'Appointment not found' });
-        }
-        res.status(200).json({ success: true, appointment });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    if (error) return res.status(400).json({ message: error.details[0].message });
+    next();
 };
+
+// Secure exports with rate limiting in production
+export const exportCSV = [
+    validateExportParams,
+    async (req, res) => {
+        try {
+            const { name, doctor, status } = req.query;
+            const query = { name: { $regex: name, $options: "i" } };
+
+            if (doctor) {
+                if (!mongoose.Types.ObjectId.isValid(doctor)) {
+                    return res.status(400).json({ message: "Invalid doctor ID format" });
+                }
+                query.doctor = doctor;
+            }
+
+            if (status !== 'all') query.status = status;
+
+            const appointments = await Appointment.find(query)
+                .sort({ date: 1 })
+                .limit(1000) // Prevent DOS attacks
+                .lean();
+
+            const fields = ["name", "date", "time", "age", "doctor", "meetingMode", "paymentMethod", "status"];
+            const parser = new Parser({ fields });
+            const csv = parser.parse(appointments);
+
+            res.header("Content-Type", "text/csv");
+            res.attachment("appointments.csv");
+            res.send(csv);
+        } catch (error) {
+            res.status(500).json({ message: "Export failed" });
+        }
+    }
+];

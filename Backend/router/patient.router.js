@@ -1,16 +1,12 @@
 // router/patient.router.js
 import express from 'express';
 import {
-  addPatient,
   getAllPatients,
   getPatientById,
 } from '../controllers/patient.controller.js';
 import { verifyToken, authorizeRoles } from '../middleware/admin.middlware.js';
 
 const router = express.Router();
-
-// Only authenticated doctors or admins can add a patient
-router.post('/add', verifyToken, authorizeRoles('doctor', 'admin'), addPatient);
 
 // Only authenticated doctors or admins can view all patients
 router.get('/all', verifyToken, authorizeRoles('doctor', 'admin'), getAllPatients);

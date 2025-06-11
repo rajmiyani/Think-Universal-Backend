@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+        }
+
+        .sidebar {
+            width: 220px;
+            min-height: 100vh;
+            background-color: #343a40;
+            color: #fff;
+            position: fixed;
+        }
+
+        .sidebar h4 {
+            padding: 20px;
+            margin-bottom: 0;
+            background-color: #23272b;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar ul li {
+            padding: 12px 20px;
+            border-bottom: 1px solid #495057;
+            cursor: pointer;
+        }
+
+        .sidebar ul li:hover {
+            background-color: #495057;
+        }
+
+        .main {
+            margin-left: 220px;
+            padding: 20px;
+        }
+
+        .card {
+            border-radius: 16px;
+        }
+
+        .chart-container {
+            height: 250px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <h4>Doctor Panel</h4>
+        <ul>
+            <li>Dashboard</li>
+            <li>Appointments</li>
+            <li>Patients</li>
+            <li>Reports</li>
+            <li>Logout</li>
+        </ul>
+    </div>
+
+    <div class="main">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>Dashboard</h3>
+            <div>
+                <label for="dateRange" class="form-label me-2">Jan 2025 - Jun 2025:</label>
+                <input type="date" id="dateRange" class="form-control d-inline" style="width: 200px;">
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-success p-3">
+                    <h6>Completed Appointments</h6>
+                    <p>+129 from last month</p>
+                    <h3>$1500</h3>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info p-3">
+                    <h6>Upcoming Appointments</h6>
+                    <p>+108 from last month</p>
+                    <h3>+250</h3>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-danger p-3">
+                    <h6>Cancelled Appointments</h6>
+                    <p>+97 from last month</p>
+                    <h3>-45</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card p-3">
+                    <h5>Appointment Overview</h5>
+                    <div class="chart-container">
+                        <canvas id="appointmentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-3">
+                    <h5>Revenue Trend</h5>
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-4">
+            <!-- 70%: Today's Appointments -->
+            <div class="col-md-8">
+                <div class="card p-3">
+                    <h5>Today's Appointments (All Doctors)</h5>
+                    <table class="table table-hover table-bordered mt-3">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Time</th>
+                                <th>Doctor</th>
+                                <th>Speciality</th>
+                                <th>Patient</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>09:00 AM</td>
+                                <td>Dr. John Smith</td>
+                                <td>Cardiology</td>
+                                <td>Jane Doe</td>
+                                <td><span class="badge bg-success">Completed</span></td>
+                            </tr>
+                            <tr>
+                                <td>10:30 AM</td>
+                                <td>Dr. Emma Watson</td>
+                                <td>Dermatology</td>
+                                <td>Mike Johnson</td>
+                                <td><span class="badge bg-warning text-dark">Upcoming</span></td>
+                            </tr>
+                            <tr>
+                                <td>12:00 PM</td>
+                                <td>Dr. Kevin Hart</td>
+                                <td>Neurology</td>
+                                <td>Sarah Lee</td>
+                                <td><span class="badge bg-danger">Cancelled</span></td>
+                            </tr>
+                            <tr>
+                                <td>01:15 PM</td>
+                                <td>Dr. Priya Patel</td>
+                                <td>Pediatrics</td>
+                                <td>John Wick</td>
+                                <td><span class="badge bg-warning text-dark">Upcoming</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 30%: Today's Patients -->
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <h5>Today's Patients</h5>
+                    <ul class="list-group mt-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Jane Doe
+                            <span class="badge bg-primary">9:00 AM</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Mike Johnson
+                            <span class="badge bg-primary">10:30 AM</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Sarah Lee
+                            <span class="badge bg-primary">12:00 PM</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            John Wick
+                            <span class="badge bg-primary">1:15 PM</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Links -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const appointmentChart = new Chart(document.getElementById('appointmentChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Success', 'Upcoming', 'Cancelled'],
+                datasets: [{
+                    label: 'Appointments',
+                    data: [129, 108, 45],
+                    backgroundColor: ['#198754', '#0dcaf0', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        const revenueChart = new Chart(document.getElementById('revenueChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Revenue',
+                    data: [800, 1100, 950, 1300, 1600, 1500],
+                    fill: true,
+                    backgroundColor: 'rgba(255, 193, 7, 0.3)',
+                    borderColor: '#ffc107',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    </script>
+</body>
+
+</html>
