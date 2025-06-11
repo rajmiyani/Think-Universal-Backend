@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
 
-export const sendOTPEmail = async (email) => {
+const sendOTPEmail = async (email) => {
     const otp = Math.floor(100000 + Math.random() * 900000);
 
     console.log("🔐 OTP to send:", otp); // ✅ make sure it logs
@@ -49,3 +49,5 @@ If you didn’t request this, please ignore this email.`,
         return { success: false, error: error.message };
     }
 };
+
+export default sendOTPEmail;

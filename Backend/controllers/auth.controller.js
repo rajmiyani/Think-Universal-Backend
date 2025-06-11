@@ -3,7 +3,7 @@ import authModel from '../models/auth.model.js';
 import generateToken from '../utils/generateToken.js';
 import axios from 'axios';
 import { loginSchema } from '../validations/validationSchema.js'
-import { sendOTPEmail } from '../utils/sendOtp.js';
+import sendOTPEmail from '../utils/sendOTP.js';
 const otpStore = new Map(); // Temporary OTP memory store
 
 
