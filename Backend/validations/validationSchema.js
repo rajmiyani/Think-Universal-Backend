@@ -292,17 +292,5 @@ export const patientSchema = Joi.object({
         .messages({
             'string.min': 'Address must be at least 5 characters',
             'string.max': 'Address cannot exceed 200 characters'
-        }),
-    city: Joi.string()
-        .max(50)
-        .required(),
-    state: Joi.string()
-        .max(50)
-        .required(),
-    country: Joi.string()
-        .max(50)
-        .required(),
-    zipcode: Joi.string()
-        .pattern(/^\d{4,10}$/)
-        .required()
+        })
 }).options({ abortEarly: false });
