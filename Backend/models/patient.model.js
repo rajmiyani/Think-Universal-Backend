@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 const patientSchema = new mongoose.Schema({
   name: {
@@ -43,5 +44,7 @@ const patientSchema = new mongoose.Schema({
     maxlength: [200, 'Address must be at most 200 characters']
   }
 }, { timestamps: true });
+
+patientSchema.plugin(mongoosePaginate);
 
 export default mongoose.model('Patient', patientSchema);
