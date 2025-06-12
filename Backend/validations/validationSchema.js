@@ -278,6 +278,12 @@ export const patientSchema = Joi.object({
         .messages({
             'any.only': 'Invalid gender selection'
         }),
+    age: Joi.number()
+        .integer()
+        .min(0)
+        .max(120).
+        required(),
+
     address: Joi.string()
         .min(3)
         .max(200)
