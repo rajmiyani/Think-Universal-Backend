@@ -1,5 +1,5 @@
 import Patient from '../models/patient.model.js';
-import { patientSchema } from '../validations/validationSchema.js'
+import { patientSchema } from '../validations/validationSchema.js';
 
 // Sanitization middleware
 const sanitizePatientInput = (req, res, next) => {
@@ -26,12 +26,6 @@ export const syncPatient = [
         return res.status(400).json({ success: false, errors });
       }
 
-      // Calculate age from DOB
-      const dob = new Date(value.dob);
-      const ageDifMs = Date.now() - dob.getTime();
-      const ageDate = new Date(ageDifMs);
-      const age = Math.abs(ageDate.getUTCFullYear() - 1970);
-
       // Check for existing patient
       const existingPatient = await Patient.findOne({
         $or: [{ email: value.email }, { phone: value.phone }]
@@ -48,8 +42,7 @@ export const syncPatient = [
       // Create new patient
       const newPatient = new Patient({
         ...value,
-        age,
-        phone: value.phone // Match model field name
+        phone: value.phone // ensure correct field name
       });
 
       await newPatient.save();
@@ -84,7 +77,7 @@ export const syncPatient = [
   }
 ];
 
-// Get all patients with security
+// Get all patients
 export const getAllPatients = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
