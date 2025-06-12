@@ -278,19 +278,12 @@ export const patientSchema = Joi.object({
         .messages({
             'any.only': 'Invalid gender selection'
         }),
-    dob: Joi.date()
-        .max('now')
-        .required()
-        .messages({
-            'date.max': 'Date of birth cannot be in future',
-            'date.base': 'Invalid date format'
-        }),
     address: Joi.string()
-        .min(5)
+        .min(3)
         .max(200)
         .required()
         .messages({
-            'string.min': 'Address must be at least 5 characters',
+            'string.min': 'Address must be at least 3 characters',
             'string.max': 'Address cannot exceed 200 characters'
         })
 }).options({ abortEarly: false });
