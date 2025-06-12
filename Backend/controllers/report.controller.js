@@ -8,12 +8,21 @@ import path from 'path';
 // GET /reports (with validation)
 export const getReports = async (req, res) => {
     try {
-        // Validate and sanitize query parameters
-        const { error, value } = reportFilterSchema.validate(req.query, { abortEarly: false, stripUnknown: true });
+        console.log("🔍 Incoming Query:", req.query);
+
+        const { error, value } = reportFilterSchema.validate(req.query, {
+            abortEarly: false,
+            stripUnknown: true
+        });
+
         if (error) {
+            console.error("❌ Validation Error:", error.details);
             const errors = error.details.map(e => e.message);
             return res.status(400).json({ success: false, errors });
         }
+
+        console.log("✅ Validated Query:", value);
+
         const { doctor, status, startDate, endDate, page, limit } = value;
 
         const query = {};
@@ -38,9 +47,11 @@ export const getReports = async (req, res) => {
             pagination: { total, page, pages: Math.ceil(total / limit) }
         });
     } catch (err) {
+        console.error("🔥 Controller Error:", err);
         res.status(500).json({ success: false, message: 'Server error', error: err.message });
     }
 };
+
 
 // GET /reports/export (with validation and security)
 export const exportCSV = async (req, res) => {
