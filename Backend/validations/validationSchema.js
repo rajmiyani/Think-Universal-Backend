@@ -298,3 +298,76 @@ export const patientSchema = Joi.object({
             'string.max': 'Address cannot exceed 200 characters'
         })
 }).options({ abortEarly: false });
+
+
+export const reportFilterSchema = Joi.object({
+    doctor: Joi.string()
+        .min(3)
+        .max(100)
+        .pattern(/^[a-zA-Z0-9\s.'-]+$/)
+        .optional()
+        .messages({
+            "string.min": "Doctor must be at least 3 characters.",
+            "string.max": "Doctor cannot exceed 100 characters.",
+            "string.pattern.base": "Doctor contains invalid characters."
+        }),
+
+    status: Joi.string()
+        .valid('Completed', 'Cancelled', 'Upcoming')
+        .optional()
+        .messages({
+            "any.only": "Status must be 'Completed', 'Cancelled', or 'Upcoming'."
+        }),
+
+    startDate: Joi.date()
+        .iso()
+        .optional()
+        .allow(null, '')
+        .messages({
+            "date.base": "Start date must be a valid ISO date."
+        }),
+
+    endDate: Joi.date()
+        .iso()
+        .optional()
+        .allow(null, '')
+        .messages({
+            "date.base": "End date must be a valid ISO date."
+        }),
+
+    page: Joi.number()
+        .min(1)
+        .default(1)
+        .messages({
+            "number.base": "Page must be a number.",
+            "number.min": "Page must be at least 1."
+        }),
+
+    limit: Joi.number()
+        .min(1)
+        .max(100)
+        .default(10)
+        .messages({
+            "number.base": "Limit must be a number.",
+            "number.min": "Limit must be at least 1.",
+            "number.max": "Limit cannot exceed 100."
+        })
+})
+    // Require both startDate and endDate together
+    .and('startDate', 'endDate')
+    // Custom validation to ensure endDate > startDate
+    .custom((value, helpers) => {
+        const { startDate, endDate } = value;
+        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+            return helpers.message('"End Date" must be greater than "Start Date"');
+        }
+        return value;
+    });
+
+
+export const reportUploadSchema = Joi.object({
+    reportNote: Joi.string()
+        .max(1000)
+        .allow('', null) // Allow empty note
+        .label('Doctor Note')
+});

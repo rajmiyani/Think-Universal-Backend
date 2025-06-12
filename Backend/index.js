@@ -44,12 +44,14 @@ import doctorRoutes from './router/doctor.router.js';
 import availabilityRoutes from './router/availability.router.js';
 import patientRoutes from './router/patient.router.js';
 import appointmentRoutes from './router/appointments.router.js';
+import reportsRoutes from './router/report.router.js';
 
 app.use('/auths', authRoutes);
 app.use('/doctors', doctorRoutes);
 app.use('/availability', availabilityRoutes);
 app.use('/patients', patientRoutes);
 app.use('/appointments', appointmentRoutes);
+app.use('/reports', reportsRoutes);
 
 // -------------------- Fallback Route --------------------
 // app.use('*', (req, res) => {
