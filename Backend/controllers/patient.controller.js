@@ -1,7 +1,4 @@
 import Patient from '../models/patient.model.js';
-import Joi from 'joi';
-
-
 
 // Sanitization middleware
 const sanitizePatientInput = (req, res, next) => {
