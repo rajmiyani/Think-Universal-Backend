@@ -246,3 +246,63 @@ export const appointmentSchema = Joi.object({
         }
         return value;
     });
+
+
+const patientSchema = Joi.object({
+    name: Joi.string()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({
+            'string.empty': 'Name is required',
+            'string.min': 'Name must be at least 2 characters',
+            'string.max': 'Name cannot exceed 100 characters'
+        }),
+    email: Joi.string()
+        .email()
+        .required()
+        .messages({
+            'string.email': 'Invalid email format',
+            'string.empty': 'Email is required'
+        }),
+    phone: Joi.string()
+        .pattern(/^\d{10,15}$/)
+        .required()
+        .messages({
+            'string.pattern.base': 'Phone must be 10-15 digits',
+            'string.empty': 'Phone is required'
+        }),
+    gender: Joi.string()
+        .valid('Male', 'Female', 'Other')
+        .required()
+        .messages({
+            'any.only': 'Invalid gender selection'
+        }),
+    dob: Joi.date()
+        .max('now')
+        .required()
+        .messages({
+            'date.max': 'Date of birth cannot be in future',
+            'date.base': 'Invalid date format'
+        }),
+    address: Joi.string()
+        .min(5)
+        .max(200)
+        .required()
+        .messages({
+            'string.min': 'Address must be at least 5 characters',
+            'string.max': 'Address cannot exceed 200 characters'
+        }),
+    city: Joi.string()
+        .max(50)
+        .required(),
+    state: Joi.string()
+        .max(50)
+        .required(),
+    country: Joi.string()
+        .max(50)
+        .required(),
+    zipcode: Joi.string()
+        .pattern(/^\d{4,10}$/)
+        .required()
+}).options({ abortEarly: false });

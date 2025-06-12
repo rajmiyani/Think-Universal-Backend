@@ -3,44 +3,114 @@ import Joi from 'joi';
 
 
 
-// --- Validation Schema ---
-const patientSchema = Joi.object({
-    name: Joi.string().min(2).max(100).required(),
-    email: Joi.string().email().required(),
-    phone: Joi.string().pattern(/^\d{10,15}$/).required(),
-    gender: Joi.string().valid('Male', 'Female', 'Other').required(),
-    age: Joi.number().min(0).max(120).required(),
-    address: Joi.string().min(5).max(200).required(),
-});
-
-
-
-export const getAllPatients = async (req, res) => {
-  try {
-    const { page = 1, limit = 5, filter = "" } = req.query;
-
-    const query = {
-      name: { $regex: filter, $options: "i" } // Case-insensitive name filter
-    };
-
-    const total = await Patient.countDocuments(query);
-    const patients = await Patient.find(query)
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
-
-    res.status(200).json({ patients, total });
-  } catch (err) {
-    console.error("❌ Error fetching patients:", err);
-    res.status(500).json({ message: "Server error" });
+// Sanitization middleware
+const sanitizePatientInput = (req, res, next) => {
+  if (req.body) {
+    Object.entries(req.body).forEach(([key, value]) => {
+      if (typeof value === 'string') req.body[key] = value.trim();
+    });
+    if (req.body.phone_number) {
+      req.body.phone = req.body.phone_number;
+      delete req.body.phone_number;
+    }
   }
+  next();
 };
 
-export const getPatientById = async (req, res) => {
+export const syncPatient = [
+  sanitizePatientInput,
+  async (req, res) => {
     try {
-        const patient = await Patient.findById(req.params.id);
-        if (!patient) return res.status(404).json({ success: false, message: 'Patient not found' });
-        res.status(200).json({ success: true, patient });
+      // Validate request body
+      const { error, value } = patientSchema.validate(req.body);
+      if (error) {
+        const errors = error.details.map(e => e.message);
+        return res.status(400).json({ success: false, errors });
+      }
+
+      // Calculate age from DOB
+      const dob = new Date(value.dob);
+      const ageDifMs = Date.now() - dob.getTime();
+      const ageDate = new Date(ageDifMs);
+      const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+      // Check for existing patient
+      const existingPatient = await Patient.findOne({
+        $or: [{ email: value.email }, { phone: value.phone }]
+      });
+
+      if (existingPatient) {
+        return res.status(409).json({
+          success: false,
+          message: 'Patient already exists',
+          existingId: existingPatient._id
+        });
+      }
+
+      // Create new patient
+      const newPatient = new Patient({
+        ...value,
+        age,
+        phone: value.phone // Match model field name
+      });
+
+      await newPatient.save();
+
+      // Sanitize output
+      const patientData = newPatient.toObject();
+      delete patientData.__v;
+
+      res.status(201).json({
+        success: true,
+        message: 'Patient synced successfully',
+        patient: patientData
+      });
+
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+      console.error('❌ Sync error:', error.message);
+
+      // Handle duplicate key error
+      if (error.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: 'Patient with this email or phone already exists'
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Server error while syncing patient',
+        error: process.env.NODE_ENV === 'development' ? error.message : null
+      });
     }
+  }
+];
+
+// Get all patients with security
+export const getAllPatients = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      sort: { createdAt: -1 },
+      select: '-__v'
+    };
+
+    const patients = await Patient.paginate({}, options);
+
+    res.status(200).json({
+      success: true,
+      data: patients.docs,
+      total: patients.totalDocs,
+      pages: patients.totalPages
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch patients',
+      error: process.env.NODE_ENV === 'development' ? err.message : null
+    });
+  }
 };
