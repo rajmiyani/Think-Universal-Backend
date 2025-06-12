@@ -1,4 +1,5 @@
 import Patient from '../models/patient.model.js';
+import { patientSchema } from '../validations/validationSchema.js'
 
 // Sanitization middleware
 const sanitizePatientInput = (req, res, next) => {

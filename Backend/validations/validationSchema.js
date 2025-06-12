@@ -248,7 +248,7 @@ export const appointmentSchema = Joi.object({
     });
 
 
-const patientSchema = Joi.object({
+export const patientSchema = Joi.object({
     name: Joi.string()
         .min(2)
         .max(100)
