@@ -281,9 +281,14 @@ export const patientSchema = Joi.object({
     age: Joi.number()
         .integer()
         .min(20)
-        .max(120).
-        required(),
-
+        .max(120)
+        .required()
+        .messages({
+            'number.base': 'Age must be a number',
+            'number.min': 'Age must be at least 20 Up',
+            'number.max': 'Age cannot exceed 120',
+            'any.required': 'Age is required'
+        }),
     address: Joi.string()
         .min(3)
         .max(200)
