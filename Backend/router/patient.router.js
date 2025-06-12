@@ -9,6 +9,6 @@ import { verifyToken, authorizeRoles } from '../middleware/admin.middlware.js';
 const router = express.Router();
 
 router.post('/syncPatient', syncPatient);
-router.get('/all', verifyToken, authorizeRoles('doctor', 'admin'), getAllPatients); // For admin frontend
+router.get('/allPatients', verifyToken, authorizeRoles('doctor', 'admin'), getAllPatients); // For admin frontend
 
 export default router;
