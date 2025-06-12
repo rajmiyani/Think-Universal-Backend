@@ -280,7 +280,7 @@ export const patientSchema = Joi.object({
         }),
     age: Joi.number()
         .integer()
-        .min(0)
+        .min(20)
         .max(120).
         required(),
 
