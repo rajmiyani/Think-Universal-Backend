@@ -11,7 +11,7 @@ import upload from '../multer.js';
 const router = express.Router();
 
 // GET /reports/getReports
-router.get('/getReports', validate(reportFilterSchema, 'query'), getReports);
+router.get('/getReports', getReports);
 
 // GET /reports/export
 router.get('/export', validate(reportFilterSchema, 'query'), exportCSV);
