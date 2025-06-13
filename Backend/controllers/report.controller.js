@@ -8,7 +8,8 @@ import path from 'path';
 // GET /reports (with validation)
 export const getReports = async (req, res) => {
     try {
-        console.log("🚀 Incoming query:", req.query);
+        console.log("🌐 API HIT: /getReports");
+        console.log("📥 Query Params:", req.query);
 
         const { error, value } = reportFilterSchema.validate(req.query, {
             abortEarly: false,
@@ -23,9 +24,9 @@ export const getReports = async (req, res) => {
             });
         }
 
-        console.log("✅ Validated query:", value);
+        console.log("✅ Validated Query:", value);
 
-        const { doctor, status, startDate, endDate, page, limit } = value;
+        const { doctor, status, startDate, endDate, page = 1, limit = 10 } = value;
 
         const query = {};
         if (doctor) query.doctor = doctor;
@@ -37,8 +38,8 @@ export const getReports = async (req, res) => {
         }
 
         const skip = (page - 1) * limit;
-        console.log("🔍 Query object:", query);
-        console.log("📄 Pagination: skip =", skip, "limit =", limit);
+
+        console.log("🔍 Final Mongo Query:", query);
 
         const total = await Report.countDocuments(query);
         const reports = await Report.find(query)
@@ -46,7 +47,7 @@ export const getReports = async (req, res) => {
             .skip(skip)
             .limit(limit);
 
-        console.log("📦 Found reports:", reports.length);
+        console.log(`📊 Found ${reports.length} reports`);
 
         return res.json({
             success: true,
@@ -57,8 +58,9 @@ export const getReports = async (req, res) => {
                 pages: Math.ceil(total / limit)
             }
         });
+
     } catch (err) {
-        console.error("🔥 Error in getReports:", err);
+        console.error("🔥 Unhandled Error in getReports:", err.stack || err.message);
         return res.status(500).json({
             success: false,
             message: "Internal Server Error",
@@ -66,6 +68,7 @@ export const getReports = async (req, res) => {
         });
     }
 };
+
 
 
 // GET /reports/export (with validation and security)
