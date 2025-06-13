@@ -1,6 +1,5 @@
 import Report from '../models/report.model.js';
 import { reportFilterSchema } from '../validations/validationSchema.js'; // Joi schema for filters
-import { reportUploadSchema } from '../validations/validationSchema.js'; // Joi schema for upload/update
 import { Parser } from 'json2csv';
 import fs from 'fs';
 import path from 'path';
@@ -73,12 +72,16 @@ export const getReports = async (req, res) => {
 // GET /reports/export (with validation and security)
 export const exportCSV = async (req, res) => {
     try {
-        // Validate filters if used
-        const { error, value } = reportFilterSchema.validate(req.query, { abortEarly: false, stripUnknown: true });
+        const { error, value } = reportFilterSchema.validate(req.query, {
+            abortEarly: false,
+            stripUnknown: true
+        });
+
         if (error) {
             const errors = error.details.map(e => e.message);
             return res.status(400).json({ success: false, errors });
         }
+
         const { doctor, status, startDate, endDate } = value;
 
         const query = {};
@@ -90,7 +93,6 @@ export const exportCSV = async (req, res) => {
             if (endDate) query.date.$lte = new Date(endDate);
         }
 
-        // Security: Limit CSV export to 1000 records max
         const reports = await Report.find(query).limit(1000);
 
         if (!reports.length) {
@@ -105,15 +107,19 @@ export const exportCSV = async (req, res) => {
         res.attachment('report-export.csv');
         return res.send(csv);
     } catch (err) {
-        res.status(500).json({ success: false, message: 'CSV export failed', error: err.message });
+        console.error("❌ CSV Export Error:", err);
+        return res.status(500).json({ success: false, message: 'CSV export failed', error: err.message });
     }
 };
 
 // PATCH /reports/:id/upload (with validation and file checks)
 export const uploadReport = async (req, res) => {
     try {
-        // Validate body (for reportNote) and file (if present)
-        const { error, value } = reportUploadSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+        const { error, value } = reportUploadSchema.validate(req.body, {
+            abortEarly: false,
+            stripUnknown: true
+        });
+
         if (error) {
             const errors = error.details.map(e => e.message);
             return res.status(400).json({ success: false, errors });
@@ -121,32 +127,43 @@ export const uploadReport = async (req, res) => {
 
         const { id } = req.params;
         const report = await Report.findById(id);
-        if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+        if (!report) {
+            return res.status(404).json({ success: false, message: 'Report not found' });
+        }
 
-        // File validation
+        // Handle file upload validation
         if (req.file) {
             const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
             const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
             const ext = path.extname(req.file.originalname).toLowerCase();
 
             if (!allowedTypes.includes(req.file.mimetype) || !allowedExtensions.includes(ext)) {
-                return res.status(400).json({ success: false, message: 'Invalid file type. Only PDF, JPG, and PNG allowed.' });
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid file type. Only PDF, JPG, and PNG allowed.'
+                });
             }
+
             if (req.file.size > 5 * 1024 * 1024) {
-                return res.status(400).json({ success: false, message: 'File size exceeds 5MB limit.' });
+                return res.status(400).json({
+                    success: false,
+                    message: 'File size exceeds 5MB limit.'
+                });
             }
+
             report.reportFile = `/uploads/${req.file.filename}`;
         }
 
-        // Update reportNote if provided
-        if (typeof value.reportNote === 'string') {
+        if (value.reportNote) {
             report.reportNote = value.reportNote.trim();
         }
 
         await report.save();
 
-        res.json({ success: true, message: 'Report updated', data: report });
+        res.json({ success: true, message: 'Report updated successfully', data: report });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'Upload error', error: err.message });
+        console.error("❌ Upload Error:", err);
+        return res.status(500).json({ success: false, message: 'Upload error', error: err.message });
     }
 };
+
