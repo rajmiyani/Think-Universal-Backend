@@ -8,7 +8,7 @@ import path from 'path';
 // GET /reports (with validation)
 export const getReports = async (req, res) => {
     try {
-        console.log("🔍 Incoming Query:", req.query);
+        console.log("🚀 Incoming query:", req.query);
 
         const { error, value } = reportFilterSchema.validate(req.query, {
             abortEarly: false,
@@ -17,11 +17,13 @@ export const getReports = async (req, res) => {
 
         if (error) {
             console.error("❌ Validation Error:", error.details);
-            const errors = error.details.map(e => e.message);
-            return res.status(400).json({ success: false, errors });
+            return res.status(400).json({
+                success: false,
+                errors: error.details.map(e => e.message)
+            });
         }
 
-        console.log("✅ Validated Query:", value);
+        console.log("✅ Validated query:", value);
 
         const { doctor, status, startDate, endDate, page, limit } = value;
 
@@ -35,20 +37,33 @@ export const getReports = async (req, res) => {
         }
 
         const skip = (page - 1) * limit;
+        console.log("🔍 Query object:", query);
+        console.log("📄 Pagination: skip =", skip, "limit =", limit);
+
         const total = await Report.countDocuments(query);
         const reports = await Report.find(query)
             .sort({ date: -1 })
             .skip(skip)
             .limit(limit);
 
-        res.json({
+        console.log("📦 Found reports:", reports.length);
+
+        return res.json({
             success: true,
             data: reports,
-            pagination: { total, page, pages: Math.ceil(total / limit) }
+            pagination: {
+                total,
+                page,
+                pages: Math.ceil(total / limit)
+            }
         });
     } catch (err) {
-        console.error("🔥 Controller Error:", err);
-        res.status(500).json({ success: false, message: 'Server error', error: err.message });
+        console.error("🔥 Error in getReports:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+            error: err.message
+        });
     }
 };
 
