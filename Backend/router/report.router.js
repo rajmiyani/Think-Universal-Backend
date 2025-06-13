@@ -13,7 +13,7 @@ import upload from '../multer.js';
 const router = express.Router();
 
 // GET Reports with filters
-router.get('/getReports', validate(reportFilterSchema, 'query'), getReports);
+router.get('/getReports', getReports);
 
 // GET Export CSV
 router.get('/export', validate(reportFilterSchema, 'query'), exportCSV);

@@ -33,6 +33,7 @@ app.use(session({
 }));
 app.use(flash());
 app.use(morgan('dev'));
+app.use(express.static('public'));
 
 // -------------------- Static Files --------------------
 app.use(express.static(join(__dirname, 'public')));
