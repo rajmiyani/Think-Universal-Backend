@@ -1,7 +1,5 @@
-// router/patient.router.js
 import express from 'express';
 import {
-    // addReport,
     getReports,
     uploadReport,
     exportCSV
@@ -12,14 +10,13 @@ import upload from '../multer.js';
 
 const router = express.Router();
 
-// GET Reports with filters
-router.get('/getReports', getReports);
+// GET /reports/getReports
+router.get('/getReports', validate(reportFilterSchema, 'query'), getReports);
 
-// GET Export CSV
+// GET /reports/export
 router.get('/export', validate(reportFilterSchema, 'query'), exportCSV);
 
-// PUT Upload report file + note
+// PUT /reports/upload/:id
 router.put('/upload/:id', upload.single('reportFile'), uploadReport);
-
 
 export default router;
