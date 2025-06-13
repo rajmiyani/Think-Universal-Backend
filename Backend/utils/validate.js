@@ -1,23 +1,46 @@
+// utils/validate.js
 const validate = (schema, property = 'body') => {
     return (req, res, next) => {
-        const { error, value } = schema.validate(req[property], {
-            abortEarly: false,         // Return all errors, not just the first one
-            stripUnknown: true         // Remove unknown keys
-        });
+        try {
+            const input = req[property];
 
-        if (error) {
-            const errors = error.details.map(err => err.message);
-            return res.status(400).json({
+            console.log(`🔍 Validating ${property}:`, input);
+
+            if (!input || typeof input !== 'object') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Missing or invalid ${property} in request`
+                });
+            }
+
+            const { error, value } = schema.validate(input, {
+                abortEarly: false,
+                stripUnknown: true
+            });
+
+            if (error) {
+                console.error("❌ Validation failed:", error.details);
+                const errors = error.details.map(err => err.message);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation error',
+                    errors
+                });
+            }
+
+            // Replace request property with sanitized value
+            req[property] = value;
+
+            console.log(`✅ ${property} validated and sanitized`);
+            next();
+        } catch (err) {
+            console.error("🔥 Middleware validation error:", err);
+            return res.status(500).json({
                 success: false,
-                message: 'Validation error',
-                errors
+                message: "Internal Server Error in validation middleware",
+                error: err.message
             });
         }
-
-        // Replace input with validated & sanitized data
-        req[property] = value;
-
-        next();
     };
 };
 
