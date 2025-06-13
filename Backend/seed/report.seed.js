@@ -12,12 +12,22 @@ const seed = async () => {
 
         await Report.deleteMany();
 
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        const nextWeek = new Date(today);
+        nextWeek.setDate(today.getDate() + 7);
+
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(today.getMonth() + 1);
+
         await Report.insertMany([
             {
                 doctor: "Dr. John",
                 patient: "Raj Morsy",
                 status: "Completed",
-                date: new Date("2024-06-10"),
+                date: tomorrow,
                 fees: 500,
                 reportNote: "Routine checkup",
                 reportFile: "report1.pdf"
@@ -26,7 +36,7 @@ const seed = async () => {
                 doctor: "Dr. John",
                 patient: "Alisha",
                 status: "Cancelled",
-                date: new Date("2024-05-12"),
+                date: nextWeek,
                 fees: 0,
                 reportNote: "Appointment cancelled",
                 reportFile: "cancel.pdf"
@@ -35,14 +45,14 @@ const seed = async () => {
                 doctor: "Dr. Asha",
                 patient: "Jay Patel",
                 status: "Upcoming",
-                date: new Date("2024-06-15"),
+                date: nextMonth,
                 fees: 400,
                 reportNote: "Follow-up",
                 reportFile: "followup.pdf"
             }
         ]);
 
-        console.log("🌱 Seeded 3 reports");
+        console.log("🌱 Seeded 3 future reports");
         process.exit();
     } catch (err) {
         console.error("❌ Seeding Error:", err.message);
