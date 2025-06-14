@@ -24,14 +24,14 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        const reportId = paramValue.reportId;
-        console.log("Report Id : ", reportId);
+        // const reportId = paramValue.reportId;
+        // console.log("Report Id : ", reportId);
 
         const createdBy = req.user?.name || 'Unknown';
 
         // Optional: Check for duplicate prescription for same report and creator
         const duplicate = await Prescription.findOne({
-            reportId,
+            // reportId,
             createdBy,
             prescriptionNote: value.prescriptionNote
         });
@@ -43,7 +43,7 @@ export const addPrescription = async (req, res) => {
         }
 
         const newPrescription = new Prescription({
-            reportId,
+            // reportId,
             prescriptionNote: value.prescriptionNote,
             createdBy
         });
