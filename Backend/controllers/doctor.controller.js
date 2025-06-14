@@ -51,6 +51,9 @@ export const addDoctor = async (req, res) => {
 
     } catch (err) {
         console.error("Add Doctor Error:", err);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return res.status(500).json({
+            success: false, message: "Server error", error: err.message, stack: err.stack
+        });
+
     }
 };

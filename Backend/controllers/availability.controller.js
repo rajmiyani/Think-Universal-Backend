@@ -6,70 +6,71 @@ import dayjs from "dayjs";
 
 export const setAvailability = async (req, res) => {
     try {
-        console.log("📥 Incoming body:", req.body);
-
-        if (!req.body || Object.keys(req.body).length === 0) {
+        // 1. Request Validation
+        const { error, value } = availabilitySchema.validate(req.body);
+        if (error) {
             return res.status(400).json({
                 success: false,
-                message: "Request body is missing or empty"
+                errors: error.details.map(e => e.message)
             });
         }
 
-        const { error, value } = availabilitySchema.validate(req.body, {
-            abortEarly: false,
-            stripUnknown: true
-        });
-
-        if (error) {
-            const errorMessages = error.details.map(e => e.message);
-            return res.status(400).json({ success: false, errors: errorMessages });
-        }
-
-        const { firstName, lastName, date, fromTime, toTime, isMonthly } = value;
-
-        // 🔍 Find doctor by firstName + lastName
-        const doctor = await Doctor.findOne({ firstName, lastName });
-
+        // 2. Doctor Verification
+        const doctor = await Doctor.findById(value.doctorId);
         if (!doctor) {
-            return res.status(404).json({ success: false, message: "Doctor not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Doctor not found"
+            });
         }
 
-        const doctorId = doctor._id;
-
-        const exists = await Availability.findOne({ doctorId, date, fromTime, toTime });
-        if (exists) {
-            return res.status(409).json({ success: false, message: "Slot already exists" });
-        }
-
-        // ⬇️ Save firstName + lastName inside Availability document
-        const newSlot = await Availability.create({
-            doctorId,
-            firstName,
-            lastName,
-            date,
-            fromTime,
-            toTime,
-            isMonthly
+        // 3. Time Slot Validation
+        const existingSlot = await Availability.findOne({
+            doctorId: value.doctorId,
+            date: value.date,
+            $or: [
+                {
+                    fromTime: { $lt: value.toTime },
+                    toTime: { $gt: value.fromTime }
+                }
+            ]
         });
+
+        if (existingSlot) {
+            return res.status(409).json({
+                success: false,
+                message: "Time slot overlaps with existing availability"
+            });
+        }
+
+        // 4. Create Availability
+        const newAvailability = await Availability.create({
+            doctorId: value.doctorId,
+            firstName: doctor.firstName,
+            lastName: doctor.lastName,
+            date: value.date,
+            fromTime: value.fromTime,
+            toTime: value.toTime,
+            isMonthly: value.isMonthly
+        });
+
+        // 5. Response Sanitization
+        const responseData = newAvailability.toObject();
+        delete responseData.__v;
 
         return res.status(201).json({
             success: true,
-            message: "Availability added successfully.",
-            data: {
-                _id: newSlot._id,
-                doctorId,
-                firstName,
-                lastName,
-                date,
-                fromTime,
-                toTime,
-                isMonthly
-            }
+            message: "Availability added successfully",
+            data: responseData
         });
 
     } catch (err) {
-        console.error("Error in setAvailability:", err);
-        return res.status(500).json({ success: false, message: "Server error" });
+        console.error("Availability Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 };
 
@@ -94,7 +95,7 @@ export const getAvailabilityDoctor = async (req, res) => {
             lastName: new RegExp("^" + lastName + "$", "i")
         });
         console.log("Doctor : ", doctor);
-        
+
 
         if (!doctor) {
             return res.status(404).json({ success: false, message: "Doctor not found." });

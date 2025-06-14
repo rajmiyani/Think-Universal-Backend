@@ -102,59 +102,50 @@ export const loginSchema = Joi.object({
 
 // Availability Slot Validation Schema
 export const availabilitySchema = Joi.object({
-    firstName: Joi.string()
-        .min(2)
-        .max(15)
-        .required(),
-    lastName: Joi.string()
-        .min(2)
-        .max(15)
-        .required(),
+    doctorId: Joi.string()
+        .required()
+        .custom((value, helpers) => {
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                return helpers.message('Invalid doctor ID format');
+            }
+            return value;
+        })
+        .messages({
+            'any.required': 'Doctor ID is required'
+        }),
     date: Joi.date()
-        .iso() // expects YYYY-MM-DD or full ISO
+        .iso()
         .min('now')
         .required()
         .messages({
-            "date.base": "Date must be in ISO format.",
-            "date.format": "Date must be in YYYY-MM-DD format.",
-            "date.min": "Date must be today or in the future.",
-            "any.required": "Date is required."
+            'date.base': 'Invalid date format',
+            'date.min': 'Date cannot be in the past',
+            'any.required': 'Date is required'
         }),
-
     fromTime: Joi.string()
         .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
         .required()
         .messages({
-            "string.pattern.base": "From time must be in HH:MM 24-hour format.",
-            "any.required": "From time is required."
+            'string.pattern.base': 'Invalid time format (HH:mm)',
+            'any.required': 'Start time is required'
         }),
-
     toTime: Joi.string()
         .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
         .required()
-        .messages({
-            "string.pattern.base": "To time must be in HH:MM 24-hour format.",
-            "any.required": "To time is required."
-        }),
-
-    isMonthly: Joi.boolean().default(false)
-})
-    .custom((value, helpers) => {
-        // Logical: toTime must be after fromTime
-        if (value.fromTime && value.toTime) {
-            const [fromH, fromM] = value.fromTime.split(':').map(Number);
-            const [toH, toM] = value.toTime.split(':').map(Number);
-
-            const fromMinutes = fromH * 60 + fromM;
-            const toMinutes = toH * 60 + toM;
-
-            if (toMinutes <= fromMinutes) {
-                return helpers.message('To time must be after from time.');
+        .custom((value, helpers) => {
+            const { fromTime } = helpers.state.ancestors[0];
+            if (value <= fromTime) {
+                return helpers.message('End time must be after start time');
             }
-        }
-
-        return value;
-    });
+            return value;
+        })
+        .messages({
+            'string.pattern.base': 'Invalid time format (HH:mm)',
+            'any.required': 'End time is required'
+        }),
+    isMonthly: Joi.boolean()
+        .default(false)
+}).prefs({ abortEarly: false });
 
 
 export const appointmentSchema = Joi.object({
