@@ -1,34 +1,31 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Store files in memory as Buffer (for further processing, e.g., upload to cloud)
+const storage = multer.memoryStorage();
 
-const uploadFolder = path.join(__dirname, './uploads');
-if (!fs.existsSync(uploadFolder)) {
-    fs.mkdirSync(uploadFolder, { recursive: true });
-}
+// Allowed file extensions and MIME types
+const allowedExtensions = ['jpeg', 'jpg', 'png', 'pdf'];
+const allowedMimeTypes = [
+    'image/jpeg',
+    'image/png',
+    'application/pdf'
+];
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadFolder);
-    },
-    filename: (req, file, cb) => {
-        const uniqueName = `${Date.now()}-${file.originalname}`;
-        cb(null, uniqueName);
-    }
-});
-
+// File filter with full validation
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|pdf/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.test(ext)) {
+    const ext = file.originalname.split('.').pop().toLowerCase();
+    const isExtensionAllowed = allowedExtensions.includes(ext);
+    const isMimeTypeAllowed = allowedMimeTypes.includes(file.mimetype);
+
+    if (isExtensionAllowed && isMimeTypeAllowed) {
         cb(null, true);
     } else {
-        cb(new Error('Only images or PDFs are allowed'), false);
+        cb(
+            new Error(
+                'Only files with extensions jpeg, jpg, png, or pdf and correct MIME types are allowed'
+            ),
+            false
+        );
     }
 };
 
@@ -39,5 +36,17 @@ const upload = multer({
         fileSize: 2 * 1024 * 1024 // 2MB
     }
 });
+
+// Optional: Express error handler for Multer errors
+export const multerErrorHandler = (err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        // Multer-specific errors
+        return res.status(400).json({ success: false, message: err.message });
+    } else if (err) {
+        // Other errors
+        return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+};
 
 export default upload;

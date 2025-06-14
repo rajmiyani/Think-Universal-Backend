@@ -62,8 +62,9 @@ const doctorSchema = new mongoose.Schema({
         maxlength: 1000
     },
     img: {
-        type: String,
-        trim: true
+        data: Buffer,
+        contentType: String,
+        originalName: String
     },
     about: {
         type: String,
