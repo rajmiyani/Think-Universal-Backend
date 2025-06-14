@@ -4,11 +4,6 @@ import authMiddleware from '../middleware/prescription.middleware.js';
 
 const router = express.Router();
 
-router.get('/test', (req, res) => {
-    console.log("✅ Router loaded correctly");
-    res.send("Router working");
-});
-
 // POST: Add a prescription
 router.post('/addPrescription/:reportId', authMiddleware, addPrescription);
 

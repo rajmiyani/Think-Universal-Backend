@@ -4,7 +4,7 @@ const prescriptionSchema = new mongoose.Schema({
     reportId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Report',
-        required: [true, 'Report reference is required'],
+        required: [false, 'Report reference is required'],
         validate: {
             validator: function (v) {
                 return mongoose.Types.ObjectId.isValid(v);

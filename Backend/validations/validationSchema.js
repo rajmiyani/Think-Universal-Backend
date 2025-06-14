@@ -373,14 +373,13 @@ export const reportUploadSchema = Joi.object({
 });
 
 export const prescriptionSchema = Joi.object({
-    // reportId: Joi.string()
-    //     .required()
-    //     .custom((value, helpers) => {
-    //         if (!mongoose.Types.ObjectId.isValid(value)) {
-    //             return helpers.message('Invalid reportId format');
-    //         }
-    //         return value;
-    //     }),
+    reportId: Joi.string()
+        .custom((value, helpers) => {
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                return helpers.message('Invalid reportId format');
+            }
+            return value;
+        }),
     prescriptionNote: Joi.string()
         .min(10)
         .max(2000)
