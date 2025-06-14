@@ -371,3 +371,58 @@ export const reportUploadSchema = Joi.object({
         .allow('', null) // Allow empty note
         .label('Doctor Note')
 });
+
+export const prescriptionSchema = Joi.object({
+    reportId: Joi.string()
+        .required()
+        .custom((value, helpers) => {
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                return helpers.message('Invalid reportId format');
+            }
+            return value;
+        }),
+    prescriptionNote: Joi.string()
+        .min(10)
+        .max(2000)
+        .required()
+        .messages({
+            'string.min': 'Prescription note must be at least 10 characters.',
+            'string.max': 'Prescription note cannot exceed 2000 characters.',
+            'any.required': 'Prescription note is required.'
+        }),
+    createdBy: Joi.string()
+        .min(3)
+        .max(100)
+        .pattern(/^[a-zA-Z0-9\s.'-]+$/)
+        .required()
+        .messages({
+            'string.min': 'Creator must be at least 3 characters.',
+            'string.max': 'Creator cannot exceed 100 characters.',
+            'string.pattern.base': 'Creator contains invalid characters.',
+            'any.required': 'Creator is required.'
+        })
+});
+
+// For validating route param `reportId`
+export const getPrescriptionsParamSchema = Joi.object({
+    reportId: Joi.string().custom((value, helpers) => {
+        if (!mongoose.Types.ObjectId.isValid(value)) {
+            return helpers.error("any.invalid");
+        }
+        return value;
+    }, 'ObjectId Validation').required().label("Report ID")
+});
+
+export const getAllPrescriptionsQuerySchema = Joi.object({
+    page: Joi.number().min(1).default(1)
+        .messages({
+            'number.base': 'Page must be a number.',
+            'number.min': 'Page must be at least 1.'
+        }),
+    limit: Joi.number().min(1).max(100).default(10)
+        .messages({
+            'number.base': 'Limit must be a number.',
+            'number.min': 'Limit must be at least 1.',
+            'number.max': 'Limit cannot exceed 100.'
+        })
+});
