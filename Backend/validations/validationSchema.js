@@ -416,3 +416,47 @@ export const getAllPrescriptionsQuerySchema = Joi.object({
             'number.max': 'Limit cannot exceed 100.'
         })
 });
+
+export const dashboardQuerySchema = Joi.object({
+    year: Joi.number()
+        .integer()
+        .min(2000)
+        .max(new Date().getFullYear())
+        .required()
+        .messages({
+            'number.base': 'Year must be a number.',
+            'number.min': 'Year must be 2000 or later.',
+            'number.max': 'Year cannot be in the future.',
+            'any.required': 'Year is required.'
+        }),
+    month: Joi.number()
+        .integer()
+        .min(1)
+        .max(12)
+        .required()
+        .messages({
+            'number.base': 'Month must be a number.',
+            'number.min': 'Month must be between 1 and 12.',
+            'number.max': 'Month must be between 1 and 12.',
+            'any.required': 'Month is required.'
+        })
+});
+
+export const todayPatientsQuerySchema = Joi.object({
+    doctorName: Joi.string()
+        .min(3)
+        .max(100)
+        .pattern(/^[a-zA-Z0-9\s.'-]+$/)
+        .optional()
+        .messages({
+            'string.min': 'Doctor name must be at least 3 characters.',
+            'string.max': 'Doctor name cannot exceed 100 characters.',
+            'string.pattern.base': 'Doctor name contains invalid characters.'
+        }),
+    status: Joi.string()
+        .valid('Completed', 'Upcoming', 'Cancelled')
+        .optional()
+        .messages({
+            'any.only': "Status must be 'Completed', 'Upcoming', or 'Cancelled'."
+        })
+});

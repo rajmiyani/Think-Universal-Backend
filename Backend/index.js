@@ -47,6 +47,7 @@ import patientRoutes from './router/patient.router.js';
 import appointmentRoutes from './router/appointments.router.js';
 import reportsRoutes from './router/report.router.js';
 import prescriptionReports from './router/prescription.router.js';
+import dashboardReports from './router/dashboard.router.js';
 
 app.use('/auths', authRoutes);
 app.use('/doctors', doctorRoutes);
@@ -55,6 +56,7 @@ app.use('/patients', patientRoutes);
 app.use('/appointments', appointmentRoutes);
 app.use('/reports', reportsRoutes);
 app.use('/prescriptions', prescriptionReports);
+app.use('/dashboard', dashboardReports);
 
 // -------------------- Fallback Route --------------------
 // app.use('*', (req, res) => {
