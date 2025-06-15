@@ -58,7 +58,7 @@ export const addDoctor = async (req, res) => {
     }
 };
 
-export const addDoctor = async (req, res) => {
+export const allDoctor = async (req, res) => {
     try {
         const data = await Doctor.find();
          return res.status(201).json({
