@@ -73,3 +73,4 @@ export const addDoctor = async (req, res) => {
         });
 
     }
+};
