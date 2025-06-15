@@ -57,3 +57,19 @@ export const addDoctor = async (req, res) => {
 
     }
 };
+
+export const addDoctor = async (req, res) => {
+    try {
+        const data = await Doctor.find();
+         return res.status(201).json({
+            success: true,
+            message: "Doctor find",
+            data
+        });
+     } catch (err) {
+        console.error("Add Doctor Error:", err);
+        return res.status(500).json({
+            success: false, message: "Server error", error: err.message, stack: err.stack
+        });
+
+    }
