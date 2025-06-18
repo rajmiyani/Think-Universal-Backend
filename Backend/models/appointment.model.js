@@ -67,7 +67,6 @@ const appointmentSchema = new mongoose.Schema({
   toObject: { virtuals: true, versionKey: false }
 });
 
-// Indexes for faster querying
 appointmentSchema.index({ date: 1, doctor: 1 });
 
 export default mongoose.model('Appointment', appointmentSchema);

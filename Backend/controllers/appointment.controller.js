@@ -1,11 +1,8 @@
 import Appointment from "../models/appointment.model.js";
-import { Parser } from "json2csv";
-import moment from "moment";
-import Joi from "joi";
 import mongoose from "mongoose";
-import { appointmentSchema } from '../validations/validationSchema.js';
 
-// Security Middleware
+
+// Middleware for input sanitization
 const sanitizeInput = (req, res, next) => {
     if (req.body) {
         Object.entries(req.body).forEach(([key, value]) => {
@@ -15,15 +12,27 @@ const sanitizeInput = (req, res, next) => {
     next();
 };
 
+// Add this function before you use it in exportCSV
+const validateExportParams = (req, res, next) => {
+    const { error } = Joi.object({
+        name: Joi.string().allow('').default(''),
+        doctor: Joi.string().hex().length(24).allow(''),
+        status: Joi.string().valid('pending', 'confirmed', 'cancelled', 'all').default('all')
+    }).validate(req.query);
 
-// Get all with filters & pagination
+    if (error) return res.status(400).json({ message: error.details[0].message });
+    next();
+};
+
+
+// Get all appointments with filters & pagination
 export const getAppointments = async (req, res) => {
     try {
         const { name = "", doctor = "", status = "", page = 1, limit = 5 } = req.query;
         const query = {
             name: { $regex: name, $options: "i" },
-            doctor: { $regex: doctor, $options: "i" },
         };
+        if (doctor) query.doctor = doctor;
         if (status && status !== "all") query.status = status;
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -43,15 +52,15 @@ export const getAppointments = async (req, res) => {
 };
 
 // View single appointment
-export const getAppointmentsByDoctor = async (req, res) => {
-    try {
-        const appointment = await Appointment.findById(req.params.id);
-        if (!appointment) return res.status(404).json({ message: "Not found" });
-        res.status(200).json(appointment);
-    } catch (error) {
-        res.status(500).json({ message: "Failed to fetch", error: error.message });
-    }
-};
+// export const getAppointmentsByDoctor = async (req, res) => {
+//     try {
+//         const appointment = await Appointment.findById(req.params.doctorId);
+//         if (!appointment) return res.status(404).json({ message: "Not found" });
+//         res.status(200).json(appointment);
+//     } catch (error) {
+//         res.status(500).json({ message: "Failed to fetch", error: error.message });
+//     }
+// };
 
 // Create new appointment (with validation)
 export const createAppointment = [
@@ -78,54 +87,40 @@ export const createAppointment = [
 ];
 
 // Update appointment (with validation)
-export const updateAppointment = [
-    sanitizeInput,
-    async (req, res) => {
-        try {
-            const { error, value } = appointmentSchema.validate(req.body);
-            if (error) return res.status(400).json({ message: error.details[0].message });
+// export const updateAppointment = [
+//     sanitizeInput,
+//     async (req, res) => {
+//         try {
+//             const { error, value } = appointmentSchema.validate(req.body);
+//             if (error) return res.status(400).json({ message: error.details[0].message });
 
-            const updated = await Appointment.findByIdAndUpdate(
-                req.params.id,
-                value,
-                { new: true, runValidators: true }
-            ).lean();
+//             const updated = await Appointment.findByIdAndUpdate(
+//                 req.params.id,
+//                 value,
+//                 { new: true, runValidators: true }
+//             ).lean();
 
-            if (!updated) return res.status(404).json({ message: "Appointment not found" });
-            delete updated.__v;
+//             if (!updated) return res.status(404).json({ message: "Appointment not found" });
+//             delete updated.__v;
 
-            res.status(200).json(updated);
-        } catch (error) {
-            res.status(400).json({ message: "Update failed", error: error.message });
-        }
-    }
-];
+//             res.status(200).json(updated);
+//         } catch (error) {
+//             res.status(400).json({ message: "Update failed", error: error.message });
+//         }
+//     }
+// ];
 
 // Delete appointment (with authorization check)
-export const deleteAppointment = async (req, res) => {
-    try {
-        // Add role-based access control check here
-        // if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
+// export const deleteAppointment = async (req, res) => {
+//     try {
+//         const deleted = await Appointment.findByIdAndDelete(req.params.id);
+//         if (!deleted) return res.status(404).json({ message: "Appointment not found" });
+//         res.status(200).json({ message: "Deleted" });
+//     } catch (error) {
+//         res.status(400).json({ message: "Failed to delete" });
+//     }
+// };
 
-        const deleted = await Appointment.findByIdAndDelete(req.params.id);
-        if (!deleted) return res.status(404).json({ message: "Appointment not found" });
-        res.status(200).json({ message: "Deleted" });
-    } catch (error) {
-        res.status(400).json({ message: "Failed to delete" });
-    }
-};
-
-// Export security enhancements
-const validateExportParams = (req, res, next) => {
-    const { error } = Joi.object({
-        name: Joi.string().allow('').default(''),
-        doctor: Joi.string().hex().length(24).allow(''),
-        status: Joi.string().valid('pending', 'confirmed', 'cancelled', 'all').default('all')
-    }).validate(req.query);
-
-    if (error) return res.status(400).json({ message: error.details[0].message });
-    next();
-};
 
 // Secure exports with rate limiting in production
 export const exportCSV = [
