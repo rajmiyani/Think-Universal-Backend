@@ -238,6 +238,39 @@ export const appointmentSchema = Joi.object({
         return value;
     });
 
+export const validateQuery = (query) => {
+    const schema = Joi.object({
+        name: Joi.string()
+            .trim()
+            .allow('')
+            .default(''),
+        doctor: Joi.string()
+            .trim()
+            .allow('')
+            .custom((value, helpers) => {
+                if (value && !mongoose.Types.ObjectId.isValid(value)) {
+                    return helpers.error('any.invalid', { message: 'Invalid doctor ID format' });
+                }
+                return value;
+            }, 'ObjectId validation'),
+        status: Joi.string()
+            .valid('pending', 'confirmed', 'cancelled', 'all')
+            .default('all'),
+        page: Joi.number()
+            .integer()
+            .min(1)
+            .default(1),
+        limit: Joi.number()
+            .integer()
+            .min(1)
+            .max(100)
+            .default(5)
+    });
+
+    // Validate and sanitize the query, returning all errors if present
+    return schema.validate(query, { abortEarly: false, stripUnknown: true });
+};
+
 
 export const patientSchema = Joi.object({
     name: Joi.string()

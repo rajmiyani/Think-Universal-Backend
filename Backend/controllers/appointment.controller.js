@@ -1,6 +1,6 @@
 import Appointment from "../models/appointment.model.js";
 import mongoose from "mongoose";
-
+import { appointmentSchema, validateQuery } from '../validations/validationSchema.js'
 
 // Middleware for input sanitization
 const sanitizeInput = (req, res, next) => {
@@ -28,26 +28,54 @@ const validateExportParams = (req, res, next) => {
 // Get all appointments with filters & pagination
 export const getAppointments = async (req, res) => {
     try {
-        const { name = "", doctor = "", status = "", page = 1, limit = 5 } = req.query;
-        const query = {
-            name: { $regex: name, $options: "i" },
-        };
-        if (doctor) query.doctor = doctor;
-        if (status && status !== "all") query.status = status;
+        // Validate query parameters
+        const { error, value } = validateQuery(req.query);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: error.details[0].message,
+            });
+        }
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const { name, doctor, status, page, limit } = value;
+
+        // Build dynamic MongoDB query
+        const query = {};
+        if (name.trim()) {
+            query.name = { $regex: name.trim(), $options: "i" };
+        }
+        if (doctor) {
+            query.doctor = doctor;
+        }
+        if (status !== "all") {
+            query.status = status;
+        }
+
+        // Pagination calculation
+        const skip = (page - 1) * limit;
+
+        // Fetch appointments and total count
         const [appointments, total] = await Promise.all([
-            Appointment.find(query).skip(skip).limit(parseInt(limit)).sort({ date: 1 }),
+            Appointment.find(query).skip(skip).limit(limit).sort({ date: 1 }).lean(),
             Appointment.countDocuments(query),
         ]);
 
         res.status(200).json({
+            success: true,
             data: appointments,
             totalPages: Math.ceil(total / limit),
-            currentPage: parseInt(page),
+            currentPage: page,
+            totalRecords: total,
+            pageSize: limit,
         });
-    } catch (error) {
-        res.status(500).json({ message: "Failed to fetch appointments", error: error.message });
+    } catch (err) {
+        console.error("Appointment fetch error:", err);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch appointments",
+            error: err.message,
+        });
     }
 };
 
@@ -63,6 +91,7 @@ export const getAppointments = async (req, res) => {
 // };
 
 // Create new appointment (with validation)
+
 export const createAppointment = [
     sanitizeInput,
     async (req, res) => {
