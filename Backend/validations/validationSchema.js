@@ -195,6 +195,30 @@ export const availabilitySchema = Joi.object({
                 'string.pattern.base': 'endMonth must be in YYYY-MM format'
             }),
             otherwise: Joi.optional()
+        }),
+    modes: Joi.object({
+        audio: Joi.boolean()
+            .required()
+            .messages({
+                'any.required': 'Audio mode is required',
+                'boolean.base': 'Audio mode must be a boolean'
+            }),
+        chat: Joi.boolean()
+            .required()
+            .messages({
+                'any.required': 'Chat mode is required',
+                'boolean.base': 'Chat mode must be a boolean'
+            }),
+        videoCall: Joi.boolean()
+            .required()
+            .messages({
+                'any.required': 'Video call mode is required',
+                'boolean.base': 'Video call mode must be a boolean'
+            })
+    })
+        .required()
+        .messages({
+            'any.required': 'Modes object is required'
         })
 })
     .custom((value, helpers) => {
@@ -554,3 +578,37 @@ export const todayPatientsQuerySchema = Joi.object({
             'any.only': "Status must be 'Completed', 'Upcoming', or 'Cancelled'."
         })
 });
+
+
+export const modeValidationSchema = Joi.object({
+    name: Joi.string()
+        .valid('audio', 'video call', 'chat')
+        .required()
+        .messages({
+            'any.required': 'Mode name is required',
+            'any.only': 'Mode name must be one of: audio, video call, chat'
+        }),
+    currency: Joi.string()
+        .valid('USD', 'INR')
+        .required()
+        .messages({
+            'any.required': 'Currency is required',
+            'any.only': 'Currency must be USD or INR'
+        }),
+    price: Joi.number()
+        .precision(2)
+        .min(0)
+        .max(100000)
+        .required()
+        .messages({
+            'number.base': 'Price must be a number',
+            'number.min': 'Price cannot be negative',
+            'number.max': 'Price is unrealistically high',
+            'any.required': 'Price is required'
+        }),
+    isActive: Joi.boolean()
+        .optional()
+        .messages({
+            'boolean.base': 'isActive must be a boolean value'
+        })
+}).prefs({ abortEarly: false, stripUnknown: true });

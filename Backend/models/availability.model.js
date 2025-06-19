@@ -111,7 +111,22 @@ const availabilitySchema = new mongoose.Schema({
         message: 'endMonth must be the same as or after startMonth'
       }
     ]
+  },
+  availability: {
+    days: [String],  // e.g., ["Monday", "Tuesday"]
+    timeSlots: [
+      {
+        from: String,
+        to: String
+      }
+    ],
+  },
+  modes: {
+    audio: { type: Boolean, default: false },
+    chat: { type: Boolean, default: false },
+    videoCall: { type: Boolean, default: false }
   }
+
 }, { timestamps: true });
 
 export default mongoose.model('Availability', availabilitySchema);

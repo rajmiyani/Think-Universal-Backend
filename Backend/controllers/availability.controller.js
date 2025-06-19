@@ -43,7 +43,7 @@ export const setAvailability = async (req, res) => {
             });
         }
 
-        // ✅ Create availability
+        // ✅ Create availability with modes
         const newAvailability = await Availability.create({
             doctorId: doctor._id,
             firstName: doctor.firstName,
@@ -53,7 +53,9 @@ export const setAvailability = async (req, res) => {
             toTime: value.toTime,
             isMonthly: value.isMonthly,
             startMonth: value.isMonthly ? value.startMonth : undefined,
-            endMonth: value.isMonthly ? value.endMonth : undefined
+            endMonth: value.isMonthly ? value.endMonth : undefined,
+            modes: value.modes  // <-- Save modes
+
         });
 
         const responseData = newAvailability.toObject();
@@ -74,6 +76,7 @@ export const setAvailability = async (req, res) => {
         });
     }
 };
+
 
 // 📆 Get Calendar Availability
 export const getAvailabilityDoctor = async (req, res) => {
@@ -99,12 +102,15 @@ export const getAvailabilityDoctor = async (req, res) => {
 
         const doctorId = doctor._id;
         const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
-
         const allSlots = await Availability.find({ doctorId });
 
         let events = [];
 
         for (let slot of allSlots) {
+            const modeList = Object.entries(slot.modes || {})
+                .filter(([_, value]) => value)
+                .map(([key]) => key); // ['audio', 'chat']
+
             if (slot.isMonthly) {
                 let current = dayjs(slot.startMonth + '-01');
                 const endDate = dayjs(slot.endMonth + '-01').endOf('month');
@@ -124,7 +130,8 @@ export const getAvailabilityDoctor = async (req, res) => {
                         start: `${repeatedDate.format('YYYY-MM-DD')}T${slot.fromTime}`,
                         end: `${repeatedDate.format('YYYY-MM-DD')}T${slot.toTime}`,
                         allDay: false,
-                        isMonthly: true
+                        isMonthly: true,
+                        modes: modeList // 🟢 added mode info
                     });
 
                     current = current.add(1, 'month');
@@ -138,7 +145,8 @@ export const getAvailabilityDoctor = async (req, res) => {
                     start: `${slot.date}T${slot.fromTime}`,
                     end: `${slot.date}T${slot.toTime}`,
                     allDay: false,
-                    isMonthly: false
+                    isMonthly: false,
+                    modes: modeList // 🟢 added mode info
                 });
             }
         }
