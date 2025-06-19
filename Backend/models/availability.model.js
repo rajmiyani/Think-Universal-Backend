@@ -4,15 +4,15 @@ import mongoose from 'mongoose';
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const availabilitySchema = new mongoose.Schema({
-  doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
-    required: [true, 'Doctor ID is required'],
-    validate: {
-      validator: mongoose.Types.ObjectId.isValid,
-      message: 'Invalid doctor ID format'
-    }
-  },
+  // doctorId: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   ref: 'Doctor',
+  //   required: [true, 'Doctor ID is required'],
+  //   validate: {
+  //     validator: mongoose.Types.ObjectId.isValid,
+  //     message: 'Invalid doctor ID format'
+  //   }
+  // },
   firstName: {
     type: String,
     required: true,
