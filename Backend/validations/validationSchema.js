@@ -116,11 +116,16 @@ export const availabilitySchema = Joi.object({
     firstName: Joi.string()
         .min(2)
         .max(15)
-        .required(),
+        .required().
+        messages({
+            'string.empty': 'First name is required'
+        }),
     lastName: Joi.string()
         .min(2)
         .max(15)
-        .required(),
+        .required().messages({
+            'string.empty': 'Last name is required'
+        }),
     date: Joi.date()
         .iso()
         .min('now')
