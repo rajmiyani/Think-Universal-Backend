@@ -103,7 +103,7 @@ export const loginSchema = Joi.object({
 // Availability Slot Validation Schema
 export const availabilitySchema = Joi.object({
     doctorId: Joi.string()
-        .required()
+        .optional()
         .custom((value, helpers) => {
             if (!mongoose.Types.ObjectId.isValid(value)) {
                 return helpers.message('Invalid doctor ID format');
@@ -113,28 +113,51 @@ export const availabilitySchema = Joi.object({
         .messages({
             'any.required': 'Doctor ID is required'
         }),
+    firstName: Joi.string()
+        .min(2)
+        .max(15)
+        .required(),
+    lastName: Joi.string()
+        .min(2)
+        .max(15)
+        .required(),
     date: Joi.date()
         .iso()
         .min('now')
-        .required()
+        .when('isMonthly', {
+            is: true,
+            then: Joi.optional(),
+            otherwise: Joi.required()
+        })
         .messages({
             'date.base': 'Invalid date format',
             'date.min': 'Date cannot be in the past',
             'any.required': 'Date is required'
         }),
+
     fromTime: Joi.string()
         .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
-        .required()
+        .when('isMonthly', {
+            is: true,
+            then: Joi.optional(),
+            otherwise: Joi.required()
+        })
         .messages({
             'string.pattern.base': 'Invalid time format (HH:mm)',
             'any.required': 'Start time is required'
         }),
+
     toTime: Joi.string()
         .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
-        .required()
+        .when('isMonthly', {
+            is: true,
+            then: Joi.optional(),
+            otherwise: Joi.required()
+        })
         .custom((value, helpers) => {
             const { fromTime } = helpers.state.ancestors[0];
-            if (value <= fromTime) {
+            // Only check if both times are present
+            if (value && fromTime && value <= fromTime) {
                 return helpers.message('End time must be after start time');
             }
             return value;
@@ -143,9 +166,42 @@ export const availabilitySchema = Joi.object({
             'string.pattern.base': 'Invalid time format (HH:mm)',
             'any.required': 'End time is required'
         }),
+
     isMonthly: Joi.boolean()
-        .default(false)
-}).prefs({ abortEarly: false });
+        .default(false),
+
+    startMonth: Joi.string()
+        .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .when('isMonthly', {
+            is: true,
+            then: Joi.required().messages({
+                'any.required': 'startMonth is required when isMonthly is true',
+                'string.pattern.base': 'startMonth must be in YYYY-MM format'
+            }),
+            otherwise: Joi.optional()
+        }),
+
+    endMonth: Joi.string()
+        .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .when('isMonthly', {
+            is: true,
+            then: Joi.required().messages({
+                'any.required': 'endMonth is required when isMonthly is true',
+                'string.pattern.base': 'endMonth must be in YYYY-MM format'
+            }),
+            otherwise: Joi.optional()
+        })
+})
+    .custom((value, helpers) => {
+        // Only validate order if both months and isMonthly are present
+        if (value.isMonthly && value.startMonth && value.endMonth) {
+            if (value.endMonth < value.startMonth) {
+                return helpers.error('any.invalid', { message: 'endMonth must be the same as or after startMonth' });
+            }
+        }
+        return value;
+    }, 'startMonth/endMonth order validation')
+    .prefs({ abortEarly: false, stripUnknown: true });
 
 
 export const appointmentSchema = Joi.object({
