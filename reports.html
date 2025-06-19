@@ -2,145 +2,147 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Doctor Profile - Admin Panel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Doctor Profile Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    body {
-      background-color: #f0f2f5;
-    }
-    .profile-container {
-      background: #fff;
-      border-radius: 16px;
-      padding: 30px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    body { background: #f4f7fa; }
+    .cover {
+      height: 200px;
+      background: url('https://via.placeholder.com/1200x200') center/cover;
+      border-radius: .5rem .5rem 0 0;
     }
     .profile-img {
-      width: 140px;
-      height: 140px;
-      object-fit: cover;
+      width: 120px;
+      height: 120px;
+      margin-top: -60px;
+      border: 5px solid #fff;
       border-radius: 50%;
-      border: 5px solid #e9ecef;
+      object-fit: cover;
     }
-    .section-title {
-      border-bottom: 2px solid #dee2e6;
-      padding-bottom: 10px;
-      margin-bottom: 25px;
-      font-size: 20px;
-      font-weight: 600;
+    .sidebar {
+      background: #fff;
+      border-radius: .5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    .form-label {
-      font-weight: 500;
+    .sidebar .nav-link { color: #555; }
+    .sidebar .nav-link.active { font-weight: 600; color: #0d6efd; }
+    .tab-content .card {
+      border-radius: .5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
+    .table td, .table th { vertical-align: middle; text-align: center; }
+    .not-available { background-color: #f8d7da; color: #842029; font-weight: 500; }
   </style>
 </head>
 <body>
 
-<div class="container py-5">
-  <div class="profile-container">
-    <div class="row g-4 align-items-center">
-      <div class="col-md-3 text-center">
-        <img src="https://via.placeholder.com/140" alt="Doctor" class="profile-img mb-2">
-        <h5 class="mt-2">Dr. Raj Morsy</h5>
-        <p class="text-muted">Cardiologist</p>
-        <button class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-upload"></i> Change Photo</button>
+<div class="container py-4">
+  <div class="row g-4">
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <div class="sidebar p-3">
+        <div class="cover"></div>
+        <div class="text-center">
+          <img src="https://via.placeholder.com/120" alt="" class="profile-img">
+          <h4 class="mt-2 mb-0">Dr. Raj Morsy</h4>
+          <div class="text-muted mb-3">Cardiologist</div>
+        </div>
+        <ul class="nav nav-pills flex-column mb-4">
+          <li class="nav-item"><a href="#profile" class="nav-link active" data-bs-toggle="pill"><i class="bi bi-person-circle me-2"></i>Profile</a></li>
+          <li class="nav-item"><a href="#availability" class="nav-link" data-bs-toggle="pill"><i class="bi bi-calendar-check me-2"></i>Availability</a></li>
+          <li class="nav-item"><a href="#patients" class="nav-link" data-bs-toggle="pill"><i class="bi bi-people me-2"></i>Patients</a></li>
+        </ul>
+        <div class="d-grid">
+          <button class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Change Photo</button>
+        </div>
       </div>
+    </div>
 
-      <div class="col-md-9">
-        <div class="section-title">Profile Information</div>
-        <form class="row g-3 needs-validation" novalidate>
-          <div class="col-md-6">
-            <label class="form-label">Full Name</label>
-            <input type="text" class="form-control" value="Dr. Raj Morsy" required>
-            <div class="invalid-feedback">Please enter full name.</div>
-          </div>
+    <!-- Main Content -->
+    <div class="col-lg-8">
+      <div class="tab-content">
 
-          <div class="col-md-6">
-            <label class="form-label">Email</label>
-            <input type="email" class="form-control" value="raj@example.com" required>
-            <div class="invalid-feedback">Please enter a valid email address.</div>
+        <!-- Profile Tab -->
+        <div class="tab-pane fade show active" id="profile">
+          <h5 class="mb-3">Doctor Information</h5>
+          <div class="card mb-4 p-3">
+            <form class="row g-3 needs-validation" novalidate>
+              <div class="col-sm-6"><label class="form-label">Full Name</label><input class="form-control" required value="Dr. Raj Morsy"></div>
+              <div class="col-sm-6"><label class="form-label">Email</label><input type="email" class="form-control" required value="raj@example.com"></div>
+              <div class="col-sm-6"><label class="form-label">Phone</label><input type="tel" class="form-control" required pattern="[0-9+ ]{10,15}" value="+91 98765 43210"></div>
+              <div class="col-sm-6"><label class="form-label">Speciality</label><input class="form-control" required value="Cardiologist"></div>
+              <div class="col-sm-6"><label class="form-label">Degree</label><input class="form-control" required value="MBBS, MD"></div>
+              <div class="col-sm-6"><label class="form-label">Experience (yrs)</label><input type="number" class="form-control" required value="10"></div>
+              <div class="col-12"><label class="form-label">Clinic Address</label><input class="form-control" required value="123 Heart Care Avenue, Surat"></div>
+              <div class="col-sm-4"><label class="form-label">City</label><input class="form-control" required value="Surat"></div>
+              <div class="col-sm-4"><label class="form-label">State</label><input class="form-control" required value="Gujarat"></div>
+              <div class="col-sm-4"><label class="form-label">Pincode</label><input class="form-control" required pattern="\d{6}" value="395007"></div>
+              <div class="col-12"><label class="form-label">Bio</label><textarea class="form-control" rows="3" required>Experienced Cardiologist …</textarea></div>
+              <div class="col-12 text-end"><button class="btn btn-primary">Save</button></div>
+            </form>
           </div>
+        </div>
 
-          <div class="col-md-6">
-            <label class="form-label">Phone Number</label>
-            <input type="tel" class="form-control" value="+91 98765 43210" pattern="^[0-9+ ]{10,15}$" required>
-            <div class="invalid-feedback">Please enter a valid phone number.</div>
+        <!-- Availability Tab -->
+        <div class="tab-pane fade" id="availability">
+          <h5 class="mb-3">Weekly Availability</h5>
+          <div class="card mb-4 p-3">
+            <div class="table-responsive">
+              <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                  <tr><th>Day</th><th>From</th><th>To</th><th>Mode</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Monday</td><td>10:00</td><td>14:00</td><td>Clinic</td><td>OPD</td></tr>
+                  <tr><td>Tuesday</td><td>11:00</td><td>15:00</td><td>Online</td><td>Video Consult</td></tr>
+                  <tr class="not-available"><td>Wednesday</td><td colspan="4">Not Available</td></tr>
+                  <tr><td>Thursday</td><td>09:00</td><td>12:00</td><td>Clinic</td><td>General Checkups</td></tr>
+                  <tr><td>Friday</td><td>10:30</td><td>13:30</td><td>Online</td><td>Follow-up</td></tr>
+                  <tr class="not-available"><td>Saturday</td><td colspan="4">Not Available</td></tr>
+                  <tr><td>Sunday</td><td>08:00</td><td>11:00</td><td>Clinic</td><td>Emergency Only</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
+        </div>
 
-          <div class="col-md-6">
-            <label class="form-label">Speciality</label>
-            <input type="text" class="form-control" value="Cardiologist" required>
-            <div class="invalid-feedback">Please enter your speciality.</div>
+        <!-- Patients Tab -->
+        <div class="tab-pane fade" id="patients">
+          <h5 class="mb-3">Recent Patients</h5>
+          <div class="card mb-4 p-3">
+            <ul class="list-group">
+              <li class="list-group-item d-flex justify-content-between">
+                <span>John Doe</span><span class="text-muted">22 June 2025</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Jane Smith</span><span class="text-muted">20 June 2025</span>
+              </li>
+            </ul>
           </div>
+        </div>
 
-          <div class="col-md-6">
-            <label class="form-label">Degree</label>
-            <input type="text" class="form-control" value="MBBS, MD" required>
-            <div class="invalid-feedback">Please enter your qualification.</div>
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Experience (Years)</label>
-            <input type="number" class="form-control" value="10" min="1" required>
-            <div class="invalid-feedback">Please enter valid experience.</div>
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Clinic Address</label>
-            <input type="text" class="form-control" value="123 Heart Care Avenue, Sector 21" required>
-            <div class="invalid-feedback">Please enter clinic address.</div>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">City</label>
-            <input type="text" class="form-control" value="Surat" required>
-            <div class="invalid-feedback">Please enter city.</div>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">State</label>
-            <input type="text" class="form-control" value="Gujarat" required>
-            <div class="invalid-feedback">Please enter state.</div>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Pincode</label>
-            <input type="text" class="form-control" value="395007" pattern="^\d{6}$" required>
-            <div class="invalid-feedback">Please enter valid 6-digit pincode.</div>
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Bio</label>
-            <textarea class="form-control" rows="3" required>Experienced Cardiologist with 10+ years of treating heart-related diseases and surgeries.</textarea>
-            <div class="invalid-feedback">Please write a short bio.</div>
-          </div>
-
-          <div class="col-12 text-end mt-3">
-            <button class="btn btn-primary px-4" type="submit">Save Changes</button>
-          </div>
-        </form>
       </div>
     </div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // Bootstrap validation script
-  (() => {
-    'use strict';
-    const forms = document.querySelectorAll('.needs-validation');
-    Array.from(forms).forEach(form => {
-      form.addEventListener('submit', event => {
-        if (!form.checkValidity()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        form.classList.add('was-validated');
-      }, false);
-    });
-  })();
+(() => {
+  'use strict';
+  const forms = document.querySelectorAll('.needs-validation');
+  Array.from(forms).forEach(form => {
+    form.addEventListener('submit', event => {
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    }, false);
+  });
+})();
 </script>
-
 </body>
 </html>
