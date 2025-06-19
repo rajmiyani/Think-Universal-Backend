@@ -112,15 +112,15 @@ const availabilitySchema = new mongoose.Schema({
       }
     ]
   },
-  availability: {
-    days: [String],  // e.g., ["Monday", "Tuesday"]
-    timeSlots: [
-      {
-        from: String,
-        to: String
-      }
-    ],
-  },
+  // availability: {
+  //   days: [String],  // e.g., ["Monday", "Tuesday"]
+  //   timeSlots: [
+  //     {
+  //       from: String,
+  //       to: String
+  //     }
+  //   ],
+  // },
   modes: {
     audio: { type: Boolean, default: false },
     chat: { type: Boolean, default: false },
