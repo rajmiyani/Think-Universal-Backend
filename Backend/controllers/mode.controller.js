@@ -1,5 +1,5 @@
 import Mode from '../models/mode.model.js';
-import { modeValidationSchema } from '../validations/mode.validation.js';
+import { modeValidationSchema } from '../validations/validationSchema.js';
 import mongoose from 'mongoose';
 
 // Create a new mode with validation and uniqueness check

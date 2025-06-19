@@ -7,8 +7,8 @@ import {
 
 const router = express.Router();
 
-router.post('/create', createMode);
-router.get('/list', getAllModes);
-router.patch('/toggle/:id', toggleModeStatus);
+router.post('/createMode', createMode);
+router.get('/getAllModes', getAllModes);
+router.patch('/toggleStatus/:id', toggleModeStatus);
 
 export default router;
