@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 // 📅 Create Availability
 export const setAvailability = async (req, res) => {
     try {
-        const { error, value } = availabilitySchemaWithoutDoctorId.validate(req.body);
+        const { error, value } = availabilitySchema.validate(req.body);
         if (error) {
             return res.status(400).json({
                 success: false,
