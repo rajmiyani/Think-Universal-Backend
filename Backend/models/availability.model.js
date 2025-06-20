@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-// Helper RegExp for HH:MM 24-hour format (e.g., "09:00", "18:30")
+// HH:MM format
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const availabilitySchema = new mongoose.Schema({
@@ -32,7 +32,6 @@ const availabilitySchema = new mongoose.Schema({
     required: [true, 'Date is required'],
     validate: {
       validator: function (v) {
-        // Date must not be in the past
         return v && v >= new Date(new Date().setHours(0, 0, 0, 0));
       },
       message: 'Date must be today or in the future'
@@ -60,7 +59,6 @@ const availabilitySchema = new mongoose.Schema({
       },
       {
         validator: function (v) {
-          // Ensure toTime is after fromTime
           if (!this.fromTime || !timeRegex.test(v) || !timeRegex.test(this.fromTime)) return true;
           const [fromH, fromM] = this.fromTime.split(':').map(Number);
           const [toH, toM] = v.split(':').map(Number);
@@ -74,19 +72,6 @@ const availabilitySchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  startMonth: {
-    type: String,
-    required: function () {
-      return this.isMonthly === true;
-    },
-    validate: {
-      validator: function (v) {
-        // Must match YYYY-MM
-        return /^20\d{2}-(0[1-9]|1[0-2])$/.test(v);
-      },
-      message: props => `"${props.value}" is not a valid month format (YYYY-MM)`
-    }
-  },
   endMonth: {
     type: String,
     required: function () {
@@ -95,38 +80,12 @@ const availabilitySchema = new mongoose.Schema({
     validate: [
       {
         validator: function (v) {
-          // Must match YYYY-MM
           return /^20\d{2}-(0[1-9]|1[0-2])$/.test(v);
         },
         message: props => `"${props.value}" is not a valid month format (YYYY-MM)`
-      },
-      {
-        validator: function (v) {
-          // Only validate if both months are present and isMonthly is true
-          if (this.isMonthly && this.startMonth && v) {
-            return v >= this.startMonth;
-          }
-          return true;
-        },
-        message: 'endMonth must be the same as or after startMonth'
       }
     ]
-  },
-  // availability: {
-  //   days: [String],  // e.g., ["Monday", "Tuesday"]
-  //   timeSlots: [
-  //     {
-  //       from: String,
-  //       to: String
-  //     }
-  //   ],
-  // },
-  modes: {
-    audio: { type: Boolean, default: false },
-    chat: { type: Boolean, default: false },
-    videoCall: { type: Boolean, default: false }
   }
-
 }, { timestamps: true });
 
 export default mongoose.model('Availability', availabilitySchema);
