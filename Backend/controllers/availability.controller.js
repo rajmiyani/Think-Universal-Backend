@@ -43,7 +43,7 @@ export const setAvailability = async (req, res) => {
             });
         }
 
-        // ✅ Create availability with modes
+        // ✅ Create availability (no modes/startMonth)
         const newAvailability = await Availability.create({
             doctorId: doctor._id,
             firstName: doctor.firstName,
@@ -52,10 +52,7 @@ export const setAvailability = async (req, res) => {
             fromTime: value.fromTime,
             toTime: value.toTime,
             isMonthly: value.isMonthly,
-            startMonth: value.isMonthly ? value.startMonth : undefined,
-            endMonth: value.isMonthly ? value.endMonth : undefined,
-            modes: value.modes  // <-- Save modes
-
+            endMonth: value.isMonthly ? value.endMonth : undefined
         });
 
         const responseData = newAvailability.toObject();
