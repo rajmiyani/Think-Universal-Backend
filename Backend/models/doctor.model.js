@@ -72,8 +72,8 @@ const doctorSchema = new mongoose.Schema({
         trim: true
     },
     avatar: {  // Added from your request (replaces img)
-        type: String, // URL for cloud storage
-        default: ''
+        data: Buffer,
+        contentType: String
     },
     totalPatient: {
         type: Number,
