@@ -1,5 +1,5 @@
 import express from 'express';
-import multer from 'multer';
+import upload from '../multer.js';
 import {
   addDoctor,
   allDoctor,
@@ -10,8 +10,7 @@ import { verifyToken, authorizeRoles } from '../middleware/admin.middlware.js';
 const router = express.Router();
 
 // ✅ Setup multer memory storage
-const upload = multer({ storage: multer.memoryStorage() });
-
+  
 // ✅ Routes
 router.post(
   '/addDoctor',
@@ -25,6 +24,7 @@ router.get('/allDoctor', allDoctor);
 
 router.put(
   '/updateProfile',
+  verifyToken,
   upload.single('avatar'),
   updateDoctorProfile
 );

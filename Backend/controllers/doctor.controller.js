@@ -78,74 +78,143 @@ export const allDoctor = async (req, res) => {
 
 export const updateDoctorProfile = async (req, res) => {
     try {
-        // Debug: Log incoming request body and file (optional, remove in production)
-        // console.log('Body:', req.body);
-        // console.log('File:', req.file);
+        // 1. AUTHENTICATION & BASIC VALIDATION
 
-        // 1. Validate form fields using Joi
+        // Ensure the user is authenticated and has a valid ID from the auth middleware
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: Doctor ID missing from session or token.'
+            });
+        }
+        const doctorId = req.user._id;
+
+        // Validate doctorId format (must be a valid MongoDB ObjectId)
+        if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid doctor ID format. Please contact support.'
+            });
+        }
+
+        // 2. VALIDATE INPUT DATA
+
+        // Validate incoming data using Joi schema (abortEarly: false for all errors)
         const { error, value } = updateDoctorSchema.validate(req.body, { abortEarly: false });
         if (error) {
             const errors = error.details.map(e => e.message);
-            return res.status(400).json({ success: false, message: 'Validation failed', errors });
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors
+            });
         }
 
-        // 2. Validate doctor ID from auth middleware
-        const doctorId = req.user?._id;
-        if (!mongoose.Types.ObjectId.isValid(doctorId)) {
-            return res.status(400).json({ success: false, message: 'Invalid doctor ID' });
-        }
+        // 3. DUPLICATE EMAIL CHECK
 
-        // 3. Check if email is already used by another doctor
+        // If the email is being updated, ensure it is not already used by another doctor
         if (value.email) {
-            const existingDoctor = await Doctor.findOne({ email: value.email, _id: { $ne: doctorId } });
-            if (existingDoctor) {
+            const existing = await Doctor.findOne({ email: value.email, _id: { $ne: doctorId } });
+            if (existing) {
                 return res.status(409).json({
                     success: false,
-                    message: 'Email already in use by another doctor'
+                    message: 'Email already in use by another doctor. Please use a unique email address.'
                 });
             }
         }
 
-        // 4. Prepare update data
-        const updatedData = { ...value };
+        // 4. FETCH CURRENT DOCTOR DATA
 
-        // 5. Handle avatar upload (store as Buffer)
+        // Fetch the current doctor document for comparison and audit
+        const currentDoctor = await Doctor.findById(doctorId);
+        if (!currentDoctor) {
+            return res.status(404).json({
+                success: false,
+                message: 'Doctor not found. Please check your account or contact support.'
+            });
+        }
+
+        // 5. PREPARE UPDATE DATA
+
+        // Prepare the update object with only the fields provided
+        const updateData = { ...value };
+
+        // If a file is uploaded (avatar), process and store as buffer
         if (req.file) {
-            updatedData.avatar = {
+            updateData.avatar = {
                 data: req.file.buffer,
                 contentType: req.file.mimetype
             };
         }
 
-        // 6. Update doctor in DB with Mongoose schema validation
+        // 6. LOG CHANGES FOR AUDIT (OPTIONAL)
+
+        // Compare old and new values for audit logging
+        const changedFields = [];
+        Object.keys(updateData).forEach(key => {
+            if (
+                typeof updateData[key] !== 'undefined' &&
+                String(currentDoctor[key]) !== String(updateData[key])
+            ) {
+                changedFields.push({
+                    field: key,
+                    oldValue: currentDoctor[key],
+                    newValue: updateData[key]
+                });
+            }
+        });
+
+        // Optional: Store audit log (stub)
+        // await AuditLog.create({
+        //     user: doctorId,
+        //     action: 'update_profile',
+        //     changes: changedFields,
+        //     timestamp: new Date()
+        // });
+
+        // 7. UPDATE DOCTOR IN DATABASE
+
+        // Perform the update with Mongoose schema validation
         const updatedDoctor = await Doctor.findByIdAndUpdate(
             doctorId,
-            { $set: updatedData },
-            {
-                new: true,
-                runValidators: true,
-                context: 'query'
-            }
-        ).select('-password -__v'); // Never return password or __v
+            { $set: updateData },
+            { new: true, runValidators: true, context: 'query' }
+        ).select('-password -__v'); // Exclude sensitive fields
 
+        // 8. POST-UPDATE LOGIC
+
+        // If the doctor was not found (should not happen if fetched above)
         if (!updatedDoctor) {
-            return res.status(404).json({ success: false, message: 'Doctor not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Doctor not found after update. Please try again.'
+            });
         }
 
-        // 7. Success response
+        // Optional: Trigger notifications or hooks
+        // if (changedFields.length > 0) {
+        //     await sendProfileUpdateNotification(doctorId, changedFields);
+        // }
+
+        // 9. SUCCESS RESPONSE
+
         res.status(200).json({
             success: true,
-            message: 'Profile updated successfully',
-            doctor: updatedDoctor
+            message: 'Profile updated successfully.',
+            doctor: updatedDoctor,
+            changes: changedFields.length > 0 ? changedFields : undefined
         });
+
     } catch (err) {
-        console.error('❌ Profile update error:', err);
+        // 10. ERROR HANDLING
+
+        console.error('❌ Update Error:', err);
 
         // Handle duplicate key error (e.g., email)
         if (err.code === 11000 && err.keyPattern?.email) {
             return res.status(409).json({
                 success: false,
-                message: 'Email already in use by another doctor'
+                message: 'Email already in use by another doctor.'
             });
         }
 
@@ -159,10 +228,18 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
-        // General server error
+        // Handle Multer file upload errors
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                success: false,
+                message: `File upload error: ${err.message}`
+            });
+        }
+
+        // Handle any other errors
         return res.status(500).json({
             success: false,
-            message: 'Server error',
+            message: 'Internal Server Error. Please try again later.',
             error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
