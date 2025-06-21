@@ -15,7 +15,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // ✅ Routes
 router.post(
   '/addDoctor',
-  upload.single('avatar'), // ✅ match with req.file field
+  upload.single('avatar'),
   verifyToken,
   authorizeRoles('admin'),
   addDoctor
@@ -23,11 +23,9 @@ router.post(
 
 router.get('/allDoctor', allDoctor);
 
-// ✅ Update doctor profile (auth middleware required)
 router.put(
   '/updateProfile',
-  verifyToken,             // protect route
-  upload.single('avatar'), // ✅ match controller
+  upload.single('avatar'),
   updateDoctorProfile
 );
 
