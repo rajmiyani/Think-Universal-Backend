@@ -78,23 +78,24 @@ export const allDoctor = async (req, res) => {
 
 export const updateDoctorProfile = async (req, res) => {
     try {
-        // DEBUG: View request content
-        console.log('Body:', req.body);
-        console.log('File:', req.file);
+        // Debug: Log incoming request body and file (optional, remove in production)
+        // console.log('Body:', req.body);
+        // console.log('File:', req.file);
 
-        // ✅ Validate form fields
+        // 1. Validate form fields using Joi
         const { error, value } = updateDoctorSchema.validate(req.body, { abortEarly: false });
         if (error) {
             const errors = error.details.map(e => e.message);
             return res.status(400).json({ success: false, message: 'Validation failed', errors });
         }
 
+        // 2. Validate doctor ID from auth middleware
         const doctorId = req.user?._id;
         if (!mongoose.Types.ObjectId.isValid(doctorId)) {
             return res.status(400).json({ success: false, message: 'Invalid doctor ID' });
         }
 
-        // ✅ Check if email already exists for another doctor
+        // 3. Check if email is already used by another doctor
         if (value.email) {
             const existingDoctor = await Doctor.findOne({ email: value.email, _id: { $ne: doctorId } });
             if (existingDoctor) {
@@ -105,10 +106,10 @@ export const updateDoctorProfile = async (req, res) => {
             }
         }
 
-        // ✅ Prepare update data
+        // 4. Prepare update data
         const updatedData = { ...value };
 
-        // ✅ If file is provided, store as buffer (img field must match multer config)
+        // 5. Handle avatar upload (store as Buffer)
         if (req.file) {
             updatedData.avatar = {
                 data: req.file.buffer,
@@ -116,7 +117,7 @@ export const updateDoctorProfile = async (req, res) => {
             };
         }
 
-        // ✅ Update the doctor in DB
+        // 6. Update doctor in DB with Mongoose schema validation
         const updatedDoctor = await Doctor.findByIdAndUpdate(
             doctorId,
             { $set: updatedData },
@@ -125,12 +126,13 @@ export const updateDoctorProfile = async (req, res) => {
                 runValidators: true,
                 context: 'query'
             }
-        ).select('-password -__v');
+        ).select('-password -__v'); // Never return password or __v
 
         if (!updatedDoctor) {
             return res.status(404).json({ success: false, message: 'Doctor not found' });
         }
 
+        // 7. Success response
         res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
@@ -139,6 +141,7 @@ export const updateDoctorProfile = async (req, res) => {
     } catch (err) {
         console.error('❌ Profile update error:', err);
 
+        // Handle duplicate key error (e.g., email)
         if (err.code === 11000 && err.keyPattern?.email) {
             return res.status(409).json({
                 success: false,
@@ -146,6 +149,7 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
+        // Handle Mongoose validation errors
         if (err.name === 'ValidationError') {
             const errors = Object.values(err.errors).map(e => e.message);
             return res.status(400).json({
@@ -155,10 +159,11 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
+        // General server error
         return res.status(500).json({
             success: false,
             message: 'Server error',
-            error: err.message
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
 };
