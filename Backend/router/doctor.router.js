@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.post('/addDoctor', upload.single('img'), verifyToken, authorizeRoles('admin'), addDoctor);
 router.get('/allDoctor',allDoctor);
-router.put('/updateProfile', upload.single('img'), updateDoctorProfile);
+router.put('/updateProfile', upload.single('avtar'), updateDoctorProfile);
 
 
 export default router;

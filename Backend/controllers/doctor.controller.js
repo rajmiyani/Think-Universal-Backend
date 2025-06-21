@@ -78,21 +78,23 @@ export const allDoctor = async (req, res) => {
 
 export const updateDoctorProfile = async (req, res) => {
     try {
-        // Validate request body
+        // DEBUG: View request content
+        console.log('Body:', req.body);
+        console.log('File:', req.file);
+
+        // ✅ Validate form fields
         const { error, value } = updateDoctorSchema.validate(req.body, { abortEarly: false });
         if (error) {
             const errors = error.details.map(e => e.message);
             return res.status(400).json({ success: false, message: 'Validation failed', errors });
         }
 
-        const doctorId = req.user._id; // From auth middleware
-
-        // Verify doctor exists
+        const doctorId = req.user?._id;
         if (!mongoose.Types.ObjectId.isValid(doctorId)) {
             return res.status(400).json({ success: false, message: 'Invalid doctor ID' });
         }
 
-        // Check email uniqueness if email is being updated
+        // ✅ Check if email already exists for another doctor
         if (value.email) {
             const existingDoctor = await Doctor.findOne({ email: value.email, _id: { $ne: doctorId } });
             if (existingDoctor) {
@@ -103,24 +105,27 @@ export const updateDoctorProfile = async (req, res) => {
             }
         }
 
-        // Prepare update data
+        // ✅ Prepare update data
         const updatedData = { ...value };
 
-        // Handle avatar upload
+        // ✅ If file is provided, store as buffer (img field must match multer config)
         if (req.file) {
-            updatedData.avatar = `/uploads/doctors/${req.file.filename}`; // Secure path
+            updatedData.avatar = {
+                data: req.file.buffer,
+                contentType: req.file.mimetype
+            };
         }
 
-        // Update with schema validations
+        // ✅ Update the doctor in DB
         const updatedDoctor = await Doctor.findByIdAndUpdate(
             doctorId,
             { $set: updatedData },
             {
                 new: true,
-                runValidators: true, // Enforce schema validations
-                context: 'query' // Required for proper validation
+                runValidators: true,
+                context: 'query'
             }
-        ).select('-password -__v'); // Exclude sensitive fields
+        ).select('-password -__v');
 
         if (!updatedDoctor) {
             return res.status(404).json({ success: false, message: 'Doctor not found' });
@@ -129,12 +134,11 @@ export const updateDoctorProfile = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
-            doctor: updatedDoctor,
+            doctor: updatedDoctor
         });
     } catch (err) {
-        console.error('Profile update error:', err);
+        console.error('❌ Profile update error:', err);
 
-        // Handle duplicate key errors separately
         if (err.code === 11000 && err.keyPattern?.email) {
             return res.status(409).json({
                 success: false,
@@ -142,7 +146,6 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
-        // Handle validation errors from Mongoose
         if (err.name === 'ValidationError') {
             const errors = Object.values(err.errors).map(e => e.message);
             return res.status(400).json({
@@ -152,10 +155,10 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Server error',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            error: err.message
         });
     }
 };
