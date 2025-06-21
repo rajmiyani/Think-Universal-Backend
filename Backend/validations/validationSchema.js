@@ -612,3 +612,129 @@ export const modeValidationSchema = Joi.object({
             'boolean.base': 'isActive must be a boolean value'
         })
 }).prefs({ abortEarly: false, stripUnknown: true });
+
+export const updateDoctorSchema = Joi.object({
+    firstName: Joi.string()
+        .min(2)
+        .max(15)
+        .required()
+        .messages({
+            'string.empty': 'First name is required',
+            'string.min': 'First name must be at least 2 characters',
+            'string.max': 'First name cannot exceed 15 characters'
+        }),
+
+    lastName: Joi.string()
+        .min(2)
+        .max(15)
+        .required()
+        .messages({
+            'string.empty': 'Last name is required',
+            'string.min': 'Last name must be at least 2 characters',
+            'string.max': 'Last name cannot exceed 15 characters'
+        }),
+
+    email: Joi.string()
+        .email({ minDomainSegments: 2, tlds: { allow: ['com', 'net', 'org', 'in'] } })
+        .required()
+        .messages({
+            'string.email': 'Please enter a valid email address',
+            'string.empty': 'Email is required'
+        }),
+
+    phone: Joi.string()
+        .pattern(/^[0-9]{10,15}$/)
+        .required()
+        .messages({
+            'string.pattern.base': 'Phone number must be 10-15 digits',
+            'string.empty': 'Phone number is required'
+        }),
+
+    speciality: Joi.string()
+        .min(2)
+        .max(50)
+        .required()
+        .messages({
+            'string.empty': 'Speciality is required',
+            'string.min': 'Speciality must be at least 2 characters',
+            'string.max': 'Speciality cannot exceed 50 characters'
+        }),
+
+    degree: Joi.string()
+        .min(2)
+        .required()
+        .messages({
+            'string.empty': 'Degree is required',
+            'string.min': 'Degree must be at least 2 characters'
+        }),
+
+    experience: Joi.number()
+        .min(0)
+        .max(80)
+        .required()
+        .messages({
+            'number.base': 'Experience must be a number',
+            'number.min': 'Experience cannot be negative',
+            'number.max': 'Experience cannot exceed 80 years',
+            'any.required': 'Experience is required'
+        }),
+
+    clinicAddress: Joi.string()
+        .min(5)
+        .required()
+        .messages({
+            'string.empty': 'Clinic address is required',
+            'string.min': 'Clinic address must be at least 5 characters'
+        }),
+
+    city: Joi.string()
+        .min(2)
+        .required()
+        .messages({
+            'string.empty': 'City is required',
+            'string.min': 'City name must be at least 2 characters'
+        }),
+
+    state: Joi.string()
+        .min(2)
+        .required()
+        .messages({
+            'string.empty': 'State is required',
+            'string.min': 'State name must be at least 2 characters'
+        }),
+
+    pincode: Joi.string()
+        .pattern(/^[0-9]{6}$/)
+        .required()
+        .messages({
+            'string.pattern.base': 'Pincode must be 6 digits',
+            'string.empty': 'Pincode is required'
+        }),
+
+    bio: Joi.string()
+        .max(2000)
+        .allow('')
+        .messages({
+            'string.max': 'Bio cannot exceed 2000 characters'
+        }),
+
+    // Additional fields for comprehensive updates
+    gender: Joi.string()
+        .valid('Male', 'Female', 'Other')
+        .messages({
+            'any.only': 'Gender must be Male, Female, or Other'
+        }),
+
+    avatar: Joi.string()
+        .uri()
+        .messages({
+            'string.uri': 'Avatar must be a valid URL'
+        }),
+
+    about: Joi.string()
+        .max(2000)
+        .messages({
+            'string.max': 'About section cannot exceed 2000 characters'
+        })
+})
+    .prefs({ abortEarly: false, stripUnknown: true }); // Return all errors and remove unknown fields
