@@ -87,7 +87,7 @@ export const updateDoctorProfile = async (req, res) => {
                 message: 'Unauthorized: Doctor ID missing from session or token.'
             });
         }
-        const doctorId = req.user._id;
+        const doctorId = req.user.id;
         console.log("DoctorId", doctorId);
         
 
