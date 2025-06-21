@@ -668,7 +668,7 @@ export const updateDoctorSchema = Joi.object({
             'string.min': 'Degree must be at least 2 characters'
         }),
 
-    experience: Joi.number()
+    experience: Joi.string()
         .min(0)
         .max(80)
         .required()
