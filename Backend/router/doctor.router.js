@@ -10,7 +10,7 @@ import { verifyToken, authorizeRoles } from '../middleware/admin.middlware.js';
 const router = express.Router();
 
 // ✅ Setup multer memory storage
-  
+
 // ✅ Routes
 router.post(
   '/addDoctor',

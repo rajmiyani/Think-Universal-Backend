@@ -81,13 +81,15 @@ export const updateDoctorProfile = async (req, res) => {
         // 1. AUTHENTICATION & BASIC VALIDATION
 
         // Ensure the user is authenticated and has a valid ID from the auth middleware
-        if (!req.user || !req.user._id) {
+        if (!req.user || !req.user.id) {
             return res.status(401).json({
                 success: false,
                 message: 'Unauthorized: Doctor ID missing from session or token.'
             });
         }
         const doctorId = req.user._id;
+        console.log("DoctorId", doctorId);
+        
 
         // Validate doctorId format (must be a valid MongoDB ObjectId)
         if (!mongoose.Types.ObjectId.isValid(doctorId)) {
@@ -165,12 +167,12 @@ export const updateDoctorProfile = async (req, res) => {
         });
 
         // Optional: Store audit log (stub)
-        // await AuditLog.create({
-        //     user: doctorId,
-        //     action: 'update_profile',
-        //     changes: changedFields,
-        //     timestamp: new Date()
-        // });
+        await AuditLog.create({
+            user: doctorId,
+            action: 'update_profile',
+            changes: changedFields,
+            timestamp: new Date()
+        });
 
         // 7. UPDATE DOCTOR IN DATABASE
 
