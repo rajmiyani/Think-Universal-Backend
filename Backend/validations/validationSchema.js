@@ -668,16 +668,13 @@ export const updateDoctorSchema = Joi.object({
             'string.min': 'Degree must be at least 2 characters'
         }),
 
-    experience: Joi.string()
-        .min(0)
-        .max(80)
-        .required()
-        .messages({
-            'number.base': 'Experience must be a number',
-            'number.min': 'Experience cannot be negative',
-            'number.max': 'Experience cannot exceed 80 years',
-            'any.required': 'Experience is required'
-        }),
+    experience: Joi.alternatives().try(
+        Joi.string().pattern(/^\d+$/),
+        Joi.number().min(0).max(80)
+    ).required().messages({
+        'any.required': 'Experience is required',
+        'string.pattern.base': 'Experience must be a number'
+    }),
 
     clinicAddress: Joi.string()
         .min(5)
@@ -725,8 +722,8 @@ export const updateDoctorSchema = Joi.object({
             'any.only': 'Gender must be Male, Female, or Other'
         }),
 
-    avatar: Joi.string()
-        .uri()
+    avatar: Joi.any()
+    .optional()
         .messages({
             'string.uri': 'Avatar must be a valid URL'
         }),
