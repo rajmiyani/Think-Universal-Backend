@@ -41,7 +41,7 @@ const doctorSchema = new mongoose.Schema({
         trim: true
     },
     experience: {
-        type: Number,
+        type: String,
         min: [0, 'Experience cannot be negative'],
         max: [80, 'Experience cannot exceed 80 years'],
         required: [true, 'Experience is required']
