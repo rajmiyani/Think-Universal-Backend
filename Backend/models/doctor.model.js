@@ -3,21 +3,21 @@ import mongoose from 'mongoose';
 const doctorSchema = new mongoose.Schema({
     firstName: {
         type: String,
-        required: [true, 'First name is required'],
+        required: [false, 'First name is required'],
         minlength: [2, 'First name must be at least 2 characters'],
         maxlength: [15, 'First name must be at most 15 characters'],
         trim: true
     },
     lastName: {
         type: String,
-        required: [true, 'Last name is required'],
+        required: [false, 'Last name is required'],
         minlength: [2, 'Last name must be at least 2 characters'],
         maxlength: [15, 'Last name must be at most 15 characters'],
         trim: true
     },
     email: {
         type: String,
-        required: [true, 'Email is required'],
+        required: [false, 'Email is required'],
         unique: true,
         trim: true,
         lowercase: true,
@@ -25,7 +25,7 @@ const doctorSchema = new mongoose.Schema({
     },
     phoneNo: {
         type: String, // Changed to String for international support
-        required: [true, 'Phone number is required'],
+        required: [false, 'Phone number is required'],
         match: [/^[0-9]{10,15}$/, 'Phone number must be 10-15 digits']
     },
     speciality: {  // Added from your request

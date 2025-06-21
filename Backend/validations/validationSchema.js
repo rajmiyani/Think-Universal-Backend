@@ -614,78 +614,157 @@ export const modeValidationSchema = Joi.object({
 }).prefs({ abortEarly: false, stripUnknown: true });
 
 export const updateDoctorSchema = Joi.object({
-    firstName: Joi.string().min(2).max(15).required()
+    firstName: Joi.string()
+        .min(2)
+        .max(15)
+        .optional()
         .messages({
-            'string.empty': 'First name is required',
+            'string.base': 'First name must be a string',
             'string.min': 'First name must be at least 2 characters',
             'string.max': 'First name cannot exceed 15 characters'
         }),
 
-    lastName: Joi.string().min(2).max(15).required()
+    lastName: Joi.string()
+        .min(2)
+        .max(15)
+        .optional()
         .messages({
-            'string.empty': 'Last name is required',
+            'string.base': 'Last name must be a string',
             'string.min': 'Last name must be at least 2 characters',
             'string.max': 'Last name cannot exceed 15 characters'
         }),
 
-    email: Joi.string().email().required()
+    email: Joi.string()
+        .email({ tlds: { allow: false } })
+        .optional()
         .messages({
-            'string.email': 'Please enter a valid email address',
-            'string.empty': 'Email is required'
+            'string.email': 'Please enter a valid email address'
         }),
 
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/).required()
+    phoneNo: Joi.string()
+        .pattern(/^[0-9]{10,15}$/)
+        .optional()
         .messages({
-            'string.pattern.base': 'Phone number must be 10-15 digits',
-            'string.empty': 'Phone number is required'
+            'string.pattern.base': 'Phone number must be 10-15 digits'
         }),
 
-    speciality: Joi.string().min(2).max(50).required()
+    speciality: Joi.string()
+        .min(2)
+        .max(50)
+        .optional()
         .messages({
-            'string.empty': 'Speciality is required'
+            'string.base': 'Speciality must be a string',
+            'string.min': 'Speciality must be at least 2 characters',
+            'string.max': 'Speciality must be at most 50 characters'
         }),
 
-    degree: Joi.string().min(2).required()
+    degree: Joi.string()
+        .min(2)
+        .optional()
         .messages({
-            'string.empty': 'Degree is required'
+            'string.base': 'Degree must be a string',
+            'string.min': 'Degree must be at least 2 characters'
         }),
 
     experience: Joi.alternatives().try(
         Joi.number().min(0).max(80),
         Joi.string().pattern(/^\d+$/)
-    ).required()
+    )
+        .optional()
         .messages({
-            'any.required': 'Experience is required',
+            'number.base': 'Experience must be a number',
+            'number.min': 'Experience cannot be negative',
+            'number.max': 'Experience cannot exceed 80 years',
             'string.pattern.base': 'Experience must be a valid number'
         }),
 
-    clinicAddress: Joi.string().min(5).required()
+    clinicAddress: Joi.string()
+        .min(5)
+        .optional()
         .messages({
-            'string.empty': 'Clinic address is required'
+            'string.base': 'Clinic address must be a string',
+            'string.min': 'Clinic address must be at least 5 characters'
         }),
 
-    city: Joi.string().min(2).required()
+    city: Joi.string()
+        .min(2)
+        .optional()
         .messages({
-            'string.empty': 'City is required'
+            'string.base': 'City must be a string',
+            'string.min': 'City must be at least 2 characters'
         }),
 
-    state: Joi.string().min(2).required()
+    state: Joi.string()
+        .min(2)
+        .optional()
         .messages({
-            'string.empty': 'State is required'
+            'string.base': 'State must be a string',
+            'string.min': 'State must be at least 2 characters'
         }),
 
-    pincode: Joi.string().pattern(/^[0-9]{6}$/).required()
+    pincode: Joi.string()
+        .pattern(/^[0-9]{6}$/)
+        .optional()
         .messages({
             'string.pattern.base': 'Pincode must be 6 digits'
         }),
 
-    bio: Joi.string().max(2000).allow(''),
+    bio: Joi.string()
+        .max(2000)
+        .allow('', null)
+        .optional()
+        .messages({
+            'string.base': 'Bio must be a string',
+            'string.max': 'Bio cannot exceed 2000 characters'
+        }),
 
-    gender: Joi.string().valid('Male', 'Female', 'Other'),
+    gender: Joi.string()
+        .valid('Male', 'Female', 'Other')
+        .optional()
+        .messages({
+            'any.only': 'Gender must be Male, Female, or Other'
+        }),
 
-    about: Joi.string().max(2000).allow(''),
+    about: Joi.string()
+        .max(2000)
+        .allow('', null)
+        .optional()
+        .messages({
+            'string.base': 'About must be a string',
+            'string.max': 'About cannot exceed 2000 characters'
+        }),
 
-    // avatar is file (req.file), skip validating as string/URL
-    avatar: Joi.any().optional()
+    avatar: Joi.any().optional(),
+
+    // Optional: add bank details validation if needed
+    bankDetails: Joi.object({
+        accountNumber: Joi.string()
+            .pattern(/^\d{9,18}$/)
+            .optional()
+            .messages({
+                'string.pattern.base': 'Account number must be 9 to 18 digits'
+            }),
+        ifscCode: Joi.string()
+            .pattern(/^[A-Z]{4}0[A-Z0-9]{6}$/)
+            .optional()
+            .messages({
+                'string.pattern.base': 'Invalid IFSC code format'
+            }),
+        bankName: Joi.string()
+            .min(2)
+            .max(100)
+            .optional()
+            .messages({
+                'string.base': 'Bank name must be a string',
+                'string.min': 'Bank name must be at least 2 characters',
+                'string.max': 'Bank name must be at most 100 characters'
+            }),
+        upiId: Joi.string()
+            .pattern(/^[\w.-]+@[\w.-]+$/)
+            .optional()
+            .messages({
+                'string.pattern.base': 'Invalid UPI ID format'
+            })
+    }).optional()
 })
     .prefs({ abortEarly: false, stripUnknown: true });

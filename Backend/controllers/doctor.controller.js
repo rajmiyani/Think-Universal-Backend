@@ -167,12 +167,12 @@ export const updateDoctorProfile = async (req, res) => {
         });
 
         // Optional: Store audit log (stub)
-        await AuditLog.create({
-            user: doctorId,
-            action: 'update_profile',
-            changes: changedFields,
-            timestamp: new Date()
-        });
+        // await AuditLog.create({
+        //     user: doctorId,
+        //     action: 'update_profile',
+        //     changes: changedFields,
+        //     timestamp: new Date()
+        // });
 
         // 7. UPDATE DOCTOR IN DATABASE
 
