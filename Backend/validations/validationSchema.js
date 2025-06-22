@@ -175,16 +175,16 @@ export const availabilitySchema = Joi.object({
     isMonthly: Joi.boolean()
         .default(false),
 
-    startMonth: Joi.string()
-        .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
-        .when('isMonthly', {
-            is: true,
-            then: Joi.required().messages({
-                'any.required': 'startMonth is required when isMonthly is true',
-                'string.pattern.base': 'startMonth must be in YYYY-MM format'
-            }),
-            otherwise: Joi.optional()
-        }),
+    // startMonth: Joi.string()
+    //     .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
+    //     .when('isMonthly', {
+    //         is: true,
+    //         then: Joi.required().messages({
+    //             'any.required': 'startMonth is required when isMonthly is true',
+    //             'string.pattern.base': 'startMonth must be in YYYY-MM format'
+    //         }),
+    //         otherwise: Joi.optional()
+    //     }),
 
     endMonth: Joi.string()
         .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
@@ -735,7 +735,7 @@ export const updateDoctorSchema = Joi.object({
         }),
 
     avatar: Joi.any().optional(),
-    
+
 
     // Optional: add bank details validation if needed
     bankDetails: Joi.object({
