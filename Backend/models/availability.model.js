@@ -85,7 +85,13 @@ const availabilitySchema = new mongoose.Schema({
         message: props => "${props.value}" // is not a valid month format(YYYY- MM)
       }
     ]
+  },
+  modes: {
+    audio: { type: Boolean, default: false },
+    chat: { type: Boolean, default: false },
+    videoCall: { type: Boolean, default: false }
   }
+
 }, { timestamps: true });
 
 export default mongoose.model('Availability', availabilitySchema);

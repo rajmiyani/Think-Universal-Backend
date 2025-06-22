@@ -52,7 +52,8 @@ export const setAvailability = async (req, res) => {
             fromTime: value.fromTime,
             toTime: value.toTime,
             isMonthly: value.isMonthly,
-            endMonth: value.isMonthly ? value.endMonth : undefined
+            endMonth: value.isMonthly ? value.endMonth : undefined,
+            modes: value.modes
         });
 
         const responseData = newAvailability.toObject();
