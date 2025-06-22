@@ -735,6 +735,7 @@ export const updateDoctorSchema = Joi.object({
         }),
 
     avatar: Joi.any().optional(),
+    
 
     // Optional: add bank details validation if needed
     bankDetails: Joi.object({
