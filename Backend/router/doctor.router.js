@@ -22,11 +22,23 @@ router.post(
 
 router.get('/allDoctor', allDoctor);
 
+// router.put(
+//   '/updateProfile',
+//   verifyToken,
+//   upload.single('avatar'),
+//   updateDoctorProfile
+// );
+
 router.put(
   '/updateProfile',
+  (req, res, next) => {
+    console.log('🟡 Request Received');
+    next();
+  },
   verifyToken,
   upload.single('avatar'),
   updateDoctorProfile
 );
+
 
 export default router;
