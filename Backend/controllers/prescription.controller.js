@@ -6,7 +6,7 @@ export const addPrescription = async (req, res) => {
     try {
         console.log("API Hit");
 
-        // Validate prescriptionNote in body
+        // ✅ Validate prescriptionNote and patient info
         const { error, value } = prescriptionSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
         if (error) {
             return res.status(400).json({
@@ -15,26 +15,30 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        // Validate reportId in params
-        const { error: paramError, value: paramValue } = getPrescriptionsParamSchema.validate(req.params, { abortEarly: false, stripUnknown: true });
-        if (paramError) {
-            return res.status(400).json({
+        const { firstName, lastName, prescriptionNote } = value;
+
+        // ✅ Find report by patient name
+        const report = await Report.findOne({
+            firstName: new RegExp('^' + firstName + '$', 'i'),
+            lastName: new RegExp('^' + lastName + '$', 'i')
+        });
+
+        if (!report) {
+            return res.status(404).json({
                 success: false,
-                errors: paramError.details.map(e => e.message)
+                message: 'No report found for the specified patient name.'
             });
         }
 
-        // const reportId = paramValue.reportId;
-        // console.log("Report Id : ", reportId);
-
         const createdBy = req.user?.name || 'Unknown';
 
-        // Optional: Check for duplicate prescription for same report and creator
+        // ❌ Prevent duplicate prescriptions
         const duplicate = await Prescription.findOne({
-            // reportId,
+            reportId: report._id,
             createdBy,
-            prescriptionNote: value.prescriptionNote
+            prescriptionNote
         });
+
         if (duplicate) {
             return res.status(409).json({
                 success: false,
@@ -42,24 +46,25 @@ export const addPrescription = async (req, res) => {
             });
         }
 
+        // ✅ Save prescription
         const newPrescription = new Prescription({
-            // reportId,
-            prescriptionNote: value.prescriptionNote,
+            reportId: report._id,
+            prescriptionNote,
             createdBy
         });
+
         await newPrescription.save();
 
-        // Sanitize output
         const result = newPrescription.toObject();
         delete result.__v;
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Prescription added successfully',
             data: result
         });
     } catch (err) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to add prescription',
             error: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -70,7 +75,6 @@ export const addPrescription = async (req, res) => {
 // Get prescriptions for a specific report (reportId from URL param)
 export const getPrescriptions = async (req, res) => {
     try {
-        // Validate reportId in params
         const { error, value } = getPrescriptionsParamSchema.validate(req.params, { abortEarly: false, stripUnknown: true });
         if (error) {
             return res.status(400).json({
@@ -79,7 +83,17 @@ export const getPrescriptions = async (req, res) => {
             });
         }
 
-        const prescriptions = await Prescription.find({ reportId: value.reportId }).sort({ createdAt: -1 });
+        const { search } = req.query;
+
+        const searchFilter = {
+            reportId: value.reportId
+        };
+
+        if (search) {
+            searchFilter.prescriptionNote = { $regex: search, $options: 'i' };
+        }
+
+        const prescriptions = await Prescription.find(searchFilter).sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,
@@ -104,14 +118,22 @@ export const getAllPrescriptions = async (req, res) => {
                 errors: error.details.map(e => e.message)
             });
         }
-        const { page, limit } = value;
+
+        const { page, limit, search } = value;
         const skip = (page - 1) * limit;
 
-        // Get total count for pagination
-        const total = await Prescription.countDocuments();
+        // 🔍 Search filter
+        const searchFilter = search ? {
+            $or: [
+                { prescriptionNote: { $regex: search, $options: 'i' } },
+                { createdBy: { $regex: search, $options: 'i' } }
+            ]
+        } : {};
 
-        // Paginated fetch
-        const prescriptions = await Prescription.find()
+        // Total count for pagination
+        const total = await Prescription.countDocuments(searchFilter);
+
+        const prescriptions = await Prescription.find(searchFilter)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);

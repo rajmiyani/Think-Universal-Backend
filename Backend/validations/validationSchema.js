@@ -532,7 +532,8 @@ export const getAllPrescriptionsQuerySchema = Joi.object({
             'number.base': 'Limit must be a number.',
             'number.min': 'Limit must be at least 1.',
             'number.max': 'Limit cannot exceed 100.'
-        })
+        }),
+    search: Joi.string().optional()
 });
 
 export const dashboardQuerySchema = Joi.object({

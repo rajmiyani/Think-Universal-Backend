@@ -42,7 +42,7 @@ export const getAppointments = async (req, res) => {
 
         // Build dynamic MongoDB query
         const query = {};
-        if (name.trim()) {
+        if (name?.trim()) {
             query.name = { $regex: name.trim(), $options: "i" };
         }
         if (doctor) {
@@ -52,18 +52,28 @@ export const getAppointments = async (req, res) => {
             query.status = status;
         }
 
-        // Pagination calculation
         const skip = (page - 1) * limit;
 
-        // Fetch appointments and total count
+        // Fetch appointments with doctor name populated
         const [appointments, total] = await Promise.all([
-            Appointment.find(query).skip(skip).limit(limit).sort({ date: 1 }).lean(),
+            Appointment.find(query)
+                .skip(skip)
+                .limit(limit)
+                .sort({ date: 1 })
+                .populate('doctor', 'firstName lastName') // 👈 Populate only name fields
+                .lean(),
             Appointment.countDocuments(query),
         ]);
 
+        // Append doctorName to each appointment
+        const updatedAppointments = appointments.map(appt => ({
+            ...appt,
+            doctorName: appt.doctor ? `${appt.doctor.firstName} ${appt.doctor.lastName}` : null,
+        }));
+
         res.status(200).json({
             success: true,
-            data: appointments,
+            data: updatedAppointments,
             totalPages: Math.ceil(total / limit),
             currentPage: page,
             totalRecords: total,
@@ -100,13 +110,17 @@ export const createAppointment = [
             if (error) return res.status(400).json({ message: error.details[0].message });
 
             // Verify doctor exists
-            const doctorExists = await mongoose.model('Doctor').exists({ _id: value.doctor });
-            if (!doctorExists) return res.status(400).json({ message: "Doctor not found" });
+            const doctor = await mongoose.model('Doctor').findById(value.doctor).select('firstName lastName');
+            if (!doctor) return res.status(400).json({ message: "Doctor not found" });
 
             const appointment = new Appointment(value);
             const saved = await appointment.save();
+
             const result = saved.toObject();
             delete result.__v;
+
+            // Add doctor name to result
+            result.doctorName = `${doctor.firstName} ${doctor.lastName}`;
 
             res.status(201).json(result);
         } catch (error) {
