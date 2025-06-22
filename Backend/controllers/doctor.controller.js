@@ -124,7 +124,7 @@ export const updateDoctorProfile = async (req, res) => {
                 });
             }
         }
-        
+
         // If the Phone no. is being updated, ensure it is not already used by another doctor
         if (value.phoneNo) {
             const phoneExists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctorId } });
@@ -253,8 +253,9 @@ export const updateDoctorProfile = async (req, res) => {
         // Handle any other errors
         return res.status(500).json({
             success: false,
-            message: 'Internal Server Error. Please try again later.',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            message: 'Internal Server Error',
+            error: err.message,
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
         });
     }
 };
