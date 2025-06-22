@@ -82,7 +82,7 @@ const availabilitySchema = new mongoose.Schema({
         validator: function (v) {
           return /^20\d{2}-(0[1-9]|1[0-2])$/.test(v);
         },
-        message: props => `"${props.value}" is not a valid month format (YYYY-MM)`
+        message: props => "${props.value}" // is not a valid month format(YYYY- MM)
       }
     ]
   }
