@@ -89,7 +89,7 @@ export const updateDoctorProfile = async (req, res) => {
         }
         const doctorId = req.user.id;
         console.log("DoctorId", doctorId);
-        
+
 
         // Validate doctorId format (must be a valid MongoDB ObjectId)
         if (!mongoose.Types.ObjectId.isValid(doctorId)) {
@@ -124,6 +124,18 @@ export const updateDoctorProfile = async (req, res) => {
                 });
             }
         }
+        
+        // If the Phone no. is being updated, ensure it is not already used by another doctor
+        if (value.phoneNo) {
+            const phoneExists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctorId } });
+            if (phoneExists) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Phone number already in use by another doctor. Please use a unique phone number.'
+                });
+            }
+        }
+
 
         // 4. FETCH CURRENT DOCTOR DATA
 
