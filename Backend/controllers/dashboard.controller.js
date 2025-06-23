@@ -1,6 +1,7 @@
 import Dashboard from '../models/dashboard.model.js';
 import moment from 'moment';
-import { todayPatientsQuerySchema } from '../validations/validationSchema.js'
+import { todayPatientsQuerySchema, dashboardSummaryQuerySchema } from '../validations/validationSchema.js'
+import appointmentModel from '../models/appointment.model.js';
 
 // =====================================================================
 // Helper Functions
@@ -68,7 +69,7 @@ export const getDashboardSummary = async (req, res) => {
             : moment().endOf('month').toDate();
 
         // Fetch dashboard data for the date range
-        const data = await Dashboard.find({
+        const data = await appointmentModel.find({
             date: { $gte: startOfMonth, $lte: endOfMonth }
         }).lean();
 

@@ -2,28 +2,28 @@ import jwt from "jsonwebtoken";
 
 export const verifyToken = async (req, res, next) => {
     try {
-        console.log("📥 [verifyToken] Incoming request");
+        // console.log("📥 [verifyToken] Incoming request");
 
         const authHeader = req.headers['authorization'];
-        console.log("🔐 Authorization Header:", authHeader);
+        // console.log("🔐 Authorization Header:", authHeader);
 
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return res.status(401).json({ message: "Token required in format: Bearer <token>" });
         }
 
         const token = authHeader.split(" ")[1];
-        console.log("🔑 Extracted Token:", token);
+        // console.log("🔑 Extracted Token:", token);
 
         if (!process.env.DOCTOR_LOGIN_TOKEN) {
-            console.error("❌ JWT secret not configured in environment variables");
+            // console.error("❌ JWT secret not configured in environment variables");
             return res.status(500).json({ message: "Server misconfiguration: Missing JWT secret" });
         }
 
         const decoded = jwt.verify(token, process.env.DOCTOR_LOGIN_TOKEN);
-        console.log("✅ Decoded JWT Payload:", decoded);
+        // console.log("✅ Decoded JWT Payload:", decoded);
 
         if (!decoded?.id || !decoded?.role) {
-            console.error("❌ Invalid token payload");
+            // console.error("❌ Invalid token payload");
             return res.status(401).json({ message: "Token is invalid: Missing id or role" });
         }
 
@@ -32,8 +32,8 @@ export const verifyToken = async (req, res, next) => {
             role: decoded.role
         };
 
-        console.log("🧑 Authenticated User ID:", req.user.id);
-        console.log("🧑 User Role:", req.user.role);
+        // console.log("🧑 Authenticated User ID:", req.user.id);
+        // console.log("🧑 User Role:", req.user.role);
 
         next();
 

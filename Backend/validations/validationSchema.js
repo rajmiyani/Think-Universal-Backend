@@ -536,7 +536,7 @@ export const getAllPrescriptionsQuerySchema = Joi.object({
     search: Joi.string().optional()
 });
 
-const dashboardSummaryQuerySchema = Joi.object({
+export const dashboardSummaryQuerySchema = Joi.object({
     startDate: Joi.date()
         .max('now')
         .optional()
