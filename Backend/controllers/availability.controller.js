@@ -85,9 +85,9 @@ export const getAvailabilityDoctor = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Doctor name is required.' });
         }
 
-        if (!start || !end) {
-            return res.status(400).json({ success: false, message: 'Start and end dates are required.' });
-        }
+        // if (!start || !end) {
+        //     return res.status(400).json({ success: false, message: 'Start and end dates are required.' });
+        // }
 
         const doctor = await Doctor.findOne({
             firstName: new RegExp('^' + firstName + '$', 'i'),
