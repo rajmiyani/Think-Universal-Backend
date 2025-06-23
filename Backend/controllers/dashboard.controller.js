@@ -2,6 +2,8 @@ import Dashboard from '../models/dashboard.model.js';
 import moment from 'moment';
 import { todayPatientsQuerySchema, dashboardSummaryQuerySchema } from '../validations/validationSchema.js'
 import appointmentModel from '../models/appointment.model.js';
+import patientModel from '../models/patient.model.js';
+import paymentModel from '../models/BankDetails.model.js';
 
 // =====================================================================
 // Helper Functions
@@ -49,7 +51,7 @@ const validateDateRange = async (query) => {
  */
 export const getDashboardSummary = async (req, res) => {
     try {
-        // Validate query parameters (optional startDate and endDate)
+        // ✅ 1. Validate query params
         const { error, value } = dashboardSummaryQuerySchema.validate(req.query);
         if (error) {
             return res.status(400).json({
@@ -59,44 +61,47 @@ export const getDashboardSummary = async (req, res) => {
             });
         }
 
-        // Determine date range: use query params if provided, else current month
-        const startOfMonth = value.startDate
+        // ✅ 2. Date range
+        const startDate = value.startDate
             ? moment(value.startDate).startOf('day').toDate()
             : moment().startOf('month').toDate();
 
-        const endOfMonth = value.endDate
+        const endDate = value.endDate
             ? moment(value.endDate).endOf('day').toDate()
             : moment().endOf('month').toDate();
 
-        // Fetch dashboard data for the date range
-        const data = await appointmentModel.find({
-            date: { $gte: startOfMonth, $lte: endOfMonth }
+        // ✅ 3. Fetch appointments in date range
+        const appointments = await appointmentModel.find({
+            date: { $gte: startDate, $lte: endDate }
         }).lean();
 
-        // Debug logs (remove or disable in production)
-        console.log("📅 Date range:", { startOfMonth, endOfMonth });
-        console.log("📊 Records found:", data.length);
+        const appointmentCount = appointments.length;
+        const totalDuration = appointments.reduce((sum, d) => sum + (d.duration || 0), 0);
+        const avgDuration = appointmentCount > 0 ? Math.round(totalDuration / appointmentCount) : 0;
 
-        // Calculate metrics safely
-        const totalRevenue = data.reduce((sum, d) => sum + (d.revenue || 0), 0);
-        const appointments = data.length;
-        const patients = new Set(data.map(d => d.patientName)).size;
-        const totalDuration = data.reduce((sum, d) => sum + (d.duration || 0), 0);
-        const avgDuration = appointments > 0 ? Math.round(totalDuration / appointments) : 0;
+        // ✅ 4. Count unique patients (by ID or name)
+        const patientIds = new Set(appointments.map(a => a.patient?.toString() || a.patientName)).size;
 
-        // Send response
+        // ✅ 5. Sum revenue from payment model
+        const payments = await paymentModel.find({
+            date: { $gte: startDate, $lte: endDate }
+        }).lean();
+
+        const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+        // ✅ 6. Return response
         res.json({
             success: true,
             data: {
                 revenue: totalRevenue,
-                appointments,
-                patients,
+                appointments: appointmentCount,
+                patients: patientIds,
                 avgDuration
             },
             meta: {
                 period: value.startDate || value.endDate ? 'custom-range' : 'current-month',
-                startDate: startOfMonth,
-                endDate: endOfMonth
+                startDate,
+                endDate
             }
         });
     } catch (err) {
