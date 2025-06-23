@@ -48,23 +48,42 @@ const validateDateRange = async (query) => {
  */
 export const getDashboardSummary = async (req, res) => {
     try {
-        // Calculate date range for current month
-        const startOfMonth = moment().startOf('month').toDate();
-        const endOfMonth = moment().endOf('month').toDate();
+        // Validate query parameters (optional startDate and endDate)
+        const { error, value } = dashboardSummaryQuerySchema.validate(req.query);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid query parameters',
+                errors: error.details.map(e => e.message)
+            });
+        }
 
-        // Fetch data from database
+        // Determine date range: use query params if provided, else current month
+        const startOfMonth = value.startDate
+            ? moment(value.startDate).startOf('day').toDate()
+            : moment().startOf('month').toDate();
+
+        const endOfMonth = value.endDate
+            ? moment(value.endDate).endOf('day').toDate()
+            : moment().endOf('month').toDate();
+
+        // Fetch dashboard data for the date range
         const data = await Dashboard.find({
             date: { $gte: startOfMonth, $lte: endOfMonth }
-        });
+        }).lean();
 
-        // Calculate metrics
+        // Debug logs (remove or disable in production)
+        console.log("📅 Date range:", { startOfMonth, endOfMonth });
+        console.log("📊 Records found:", data.length);
+
+        // Calculate metrics safely
         const totalRevenue = data.reduce((sum, d) => sum + (d.revenue || 0), 0);
         const appointments = data.length;
         const patients = new Set(data.map(d => d.patientName)).size;
         const totalDuration = data.reduce((sum, d) => sum + (d.duration || 0), 0);
         const avgDuration = appointments > 0 ? Math.round(totalDuration / appointments) : 0;
 
-        // Prepare response
+        // Send response
         res.json({
             success: true,
             data: {
@@ -74,13 +93,13 @@ export const getDashboardSummary = async (req, res) => {
                 avgDuration
             },
             meta: {
-                period: 'current-month',
+                period: value.startDate || value.endDate ? 'custom-range' : 'current-month',
                 startDate: startOfMonth,
                 endDate: endOfMonth
             }
         });
     } catch (err) {
-        console.error('Dashboard summary error:', err);
+        console.error('❌ Dashboard summary error:', err);
         res.status(500).json({
             success: false,
             message: "Failed to generate dashboard summary",

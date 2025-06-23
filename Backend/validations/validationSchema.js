@@ -536,6 +536,26 @@ export const getAllPrescriptionsQuerySchema = Joi.object({
     search: Joi.string().optional()
 });
 
+const dashboardSummaryQuerySchema = Joi.object({
+    startDate: Joi.date()
+        .max('now')
+        .optional()
+        .messages({
+            'date.base': 'startDate must be a valid date',
+            'date.max': 'startDate cannot be in the future'
+        }),
+    endDate: Joi.date()
+        .min(Joi.ref('startDate'))
+        .max('now')
+        .optional()
+        .messages({
+            'date.base': 'endDate must be a valid date',
+            'date.min': 'endDate cannot be before startDate',
+            'date.max': 'endDate cannot be in the future'
+        })
+}).prefs({ abortEarly: false, stripUnknown: true });
+
+
 export const dashboardQuerySchema = Joi.object({
     year: Joi.number()
         .integer()
