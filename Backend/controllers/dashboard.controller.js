@@ -51,7 +51,7 @@ const validateDateRange = async (query) => {
  */
 export const getDashboardSummary = async (req, res) => {
     try {
-        // ✅ 1. Validate query params
+        // 1️⃣ Validate optional query parameters
         const { error, value } = dashboardSummaryQuerySchema.validate(req.query);
         if (error) {
             return res.status(400).json({
@@ -61,7 +61,7 @@ export const getDashboardSummary = async (req, res) => {
             });
         }
 
-        // ✅ 2. Date range
+        // 2️⃣ Determine date range (query params or default to current month)
         const startDate = value.startDate
             ? moment(value.startDate).startOf('day').toDate()
             : moment().startOf('month').toDate();
@@ -70,26 +70,35 @@ export const getDashboardSummary = async (req, res) => {
             ? moment(value.endDate).endOf('day').toDate()
             : moment().endOf('month').toDate();
 
-        // ✅ 3. Fetch appointments in date range
+        // 3️⃣ Get appointments for range
         const appointments = await appointmentModel.find({
             date: { $gte: startDate, $lte: endDate }
         }).lean();
 
         const appointmentCount = appointments.length;
-        const totalDuration = appointments.reduce((sum, d) => sum + (d.duration || 0), 0);
+        const totalDuration = appointments.reduce((sum, a) => sum + (a.duration || 0), 0);
         const avgDuration = appointmentCount > 0 ? Math.round(totalDuration / appointmentCount) : 0;
 
-        // ✅ 4. Count unique patients (by ID or name)
+        // 4️⃣ Count unique patients
         const patientIds = new Set(appointments.map(a => a.patient?.toString() || a.patientName)).size;
 
-        // ✅ 5. Sum revenue from payment model
+        // 5️⃣ Get revenue from payment model
         const payments = await paymentModel.find({
             date: { $gte: startDate, $lte: endDate }
         }).lean();
 
         const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-        // ✅ 6. Return response
+        // 6️⃣ Save dashboard summary to MongoDB (Dashboard collection)
+        await Dashboard.create({
+            date: new Date(),
+            revenue: totalRevenue,
+            appointmentCount,
+            patientCount: patientIds,
+            avgDuration
+        });
+
+        // 7️⃣ Send response
         res.json({
             success: true,
             data: {
@@ -104,6 +113,7 @@ export const getDashboardSummary = async (req, res) => {
                 endDate
             }
         });
+
     } catch (err) {
         console.error('❌ Dashboard summary error:', err);
         res.status(500).json({
