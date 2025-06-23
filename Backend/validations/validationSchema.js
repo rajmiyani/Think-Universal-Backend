@@ -563,23 +563,42 @@ export const dashboardQuerySchema = Joi.object({
 
 export const todayPatientsQuerySchema = Joi.object({
     doctorName: Joi.string()
+        .trim()
         .min(3)
         .max(100)
-        .pattern(/^[a-zA-Z0-9\s.'-]+$/)
         .optional()
         .messages({
-            'string.min': 'Doctor name must be at least 3 characters.',
-            'string.max': 'Doctor name cannot exceed 100 characters.',
-            'string.pattern.base': 'Doctor name contains invalid characters.'
+            'string.min': 'Doctor name must be at least 3 characters',
+            'string.max': 'Doctor name cannot exceed 100 characters'
         }),
     status: Joi.string()
         .valid('Completed', 'Upcoming', 'Cancelled')
         .optional()
         .messages({
-            'any.only': "Status must be 'Completed', 'Upcoming', or 'Cancelled'."
+            'any.only': 'Status must be Completed, Upcoming, or Cancelled'
         })
-});
+}).prefs({ abortEarly: false, stripUnknown: true });
 
+export const dateRangeSchema = Joi.object({
+    startDate: Joi.date()
+        .max('now')
+        .required()
+        .messages({
+            'date.base': 'Start date must be a valid date',
+            'date.max': 'Start date cannot be in the future',
+            'any.required': 'Start date is required'
+        }),
+    endDate: Joi.date()
+        .min(Joi.ref('startDate'))
+        .max('now')
+        .required()
+        .messages({
+            'date.base': 'End date must be a valid date',
+            'date.min': 'End date cannot be before start date',
+            'date.max': 'End date cannot be in the future',
+            'any.required': 'End date is required'
+        })
+}).prefs({ abortEarly: false, stripUnknown: true });
 
 export const modeValidationSchema = Joi.object({
     name: Joi.string()

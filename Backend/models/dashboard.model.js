@@ -40,18 +40,57 @@ const dashboardSchema = new mongoose.Schema({
         min: [0, 'Revenue cannot be negative'],
         max: [1000000, 'Revenue is unrealistically high'],
         default: 0
+    },
+    duration: {
+        type: Number, // in minutes
+        required: [true, 'Duration is required'],
+        min: [5, 'Appointment must be at least 5 minutes'],
+        max: [240, 'Appointment cannot exceed 4 hours']
+    },
+    appointmentType: {
+        type: String,
+        enum: {
+            values: ['Check-up', 'Follow-up', 'Consultation', 'Urgent'],
+            message: 'Appointment type must be Check-up, Follow-up, Consultation, or Urgent'
+        },
+        required: [true, 'Appointment type is required']
+    },
+}, {
+    timestamps: true,
+    versionKey: false,
+    toJSON: {
+        transform: function (doc, ret) {
+            // Convert date to ISO string for consistent output
+            ret.date = doc.date.toISOString();
+            // Remove internal fields
+            delete ret.createdAt;
+            delete ret.updatedAt;
+            return ret;
+        }
+    },
+    toObject: {
+        transform: function (doc, ret) {
+            ret.date = doc.date.toISOString();
+            delete ret.createdAt;
+            delete ret.updatedAt;
+            return ret;
+        }
     }
-}, { timestamps: true, versionKey: false });
+});
 
-// Index for fast analytics queries
-dashboardSchema.index({ date: 1, doctorName: 1, status: 1 });
+// Indexes for fast analytics queries
+dashboardSchema.index({ date: 1 }); // For time-based queries
+dashboardSchema.index({ doctorName: 1 }); // For doctor-specific reports
+dashboardSchema.index({ status: 1 }); // For status-based filtering
+dashboardSchema.index({ appointmentType: 1 }); // For type-based analytics
 
-// Sanitize output
-dashboardSchema.set('toJSON', {
-    transform: function (doc, ret) {
-        delete ret.__v;
-        return ret;
-    }
+// Virtual for formatted date (optional)
+dashboardSchema.virtual('formattedDate').get(function () {
+    return this.date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
 });
 
 export default mongoose.model('Dashboard', dashboardSchema);

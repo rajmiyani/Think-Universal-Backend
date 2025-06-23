@@ -1,5 +1,7 @@
 import Doctor from '../models/doctor.model.js';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
+import multer from 'multer';
 import { doctorSchema, updateDoctorSchema } from '../validations/validationSchema.js'
 
 export const addDoctor = async (req, res) => {
