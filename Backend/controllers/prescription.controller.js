@@ -149,11 +149,8 @@ export const getPrescriptions = async (req, res) => {
 export const getPrescriptionsByDoctor = async (req, res) => {
     try {
         const doctor = req.params.doctorName?.trim();
-        const { search } = req.query;
 
         console.log("🔍 Doctor name from params:", doctor);
-        console.log("🔍 Search keyword:", search);
-
         if (!doctor) {
             return res.status(400).json({
                 success: false,
@@ -161,10 +158,9 @@ export const getPrescriptionsByDoctor = async (req, res) => {
             });
         }
 
-        // Step 1: Get all reports by this doctor
+        // 🔍 Step 1: Get all reports created by this doctor
         const reports = await Report.find({ doctor });
-        console.log("📋 Total reports found:", reports.length);
-        console.log("📋 Reports:", reports);
+        console.log("📋 Reports found:", reports.length);
 
         if (!reports || reports.length === 0) {
             return res.status(404).json({
@@ -173,44 +169,33 @@ export const getPrescriptionsByDoctor = async (req, res) => {
             });
         }
 
-        const mobileMap = {}; // Map mobile to patient info
-        reports.forEach(r => {
-            mobileMap[r.mobile] = {
-                fullName: `${r.firstName} ${r.lastName}`,
-                date: r.date,
-                mobile: r.mobile
+        // 🔁 Build mobile to patient mapping
+        const mobileMap = {};
+        reports.forEach(report => {
+            mobileMap[report.mobile] = {
+                fullName: `${report.firstName} ${report.lastName}`,
+                date: report.date,
+                mobile: report.mobile
             };
         });
 
-        const mobiles = Object.keys(mobileMap);
-        console.log("📱 Patient mobiles extracted from reports:", mobiles);
+        const patientMobiles = Object.keys(mobileMap);
 
-        // Step 2: Filter prescriptions by patientMobile and createdBy
-        const filter = {
-            patientMobile: { $in: mobiles },
+        // 🔍 Step 2: Find prescriptions for those patients created by this doctor
+        const prescriptions = await Prescription.find({
+            patientMobile: { $in: patientMobiles },
             createdBy: doctor
-        };
+        }).sort({ createdAt: -1 });
 
-        if (search) {
-            filter.prescriptionNote = { $regex: search, $options: 'i' };
-        }
-
-        console.log("🔍 Final prescription filter:", filter);
-
-        const prescriptions = await Prescription.find(filter).sort({ createdAt: -1 });
-        console.log("📜 Prescriptions found:", prescriptions.length);
-
-        // Step 3: Attach patient details to each prescription
-        const enriched = prescriptions.map(p => ({
+        // 🧾 Step 3: Enrich prescriptions with patient info
+        const enrichedPrescriptions = prescriptions.map(p => ({
             ...p.toObject(),
             patientInfo: mobileMap[p.patientMobile] || {}
         }));
 
-        console.log("✅ Enriched prescriptions:", enriched);
-
         return res.status(200).json({
             success: true,
-            data: enriched
+            data: enrichedPrescriptions
         });
 
     } catch (err) {

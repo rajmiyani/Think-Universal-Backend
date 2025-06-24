@@ -11,7 +11,7 @@ router.post('/addPrescription/:phoneNo', authMiddleware, addPrescription);
 router.get('/getPrescriptions/:phoneNo', authMiddleware, getPrescriptions);
 
 // Get all prescriptions (for admin)
-router.get('/getAllPrescriptions/:doctoName', getPrescriptionsByDoctor);
+router.get('/getAllPrescriptions/:doctorName', getPrescriptionsByDoctor);
 
 router.put('/prescriptionsUpdate/:phoneNo', authMiddleware, updatePrescription);
 
