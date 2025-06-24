@@ -2,10 +2,8 @@ import mongoose from 'mongoose';
 import validator from 'validator';
 
 const authSchema = new mongoose.Schema({
-    email: {
+    main_email: {
         type: String,
-        required: [true, 'Email is required'],
-        unique: true,
         lowercase: true,
         trim: true,
         validate: {
@@ -13,19 +11,31 @@ const authSchema = new mongoose.Schema({
             message: 'Please provide a valid email address'
         }
     },
-    password: {
+    main_password: {
         type: String,
-        required: [true, 'Password is required'],
+        minlength: [6, 'Password must be at least 6 characters long']
+    },
+    sub_email: {
+        type: String,
+        lowercase: true,
+        trim: true,
+        validate: {
+            validator: validator.isEmail,
+            message: 'Please provide a valid email address'
+        }
+    },
+    sub_password: {
+        type: String,
         minlength: [6, 'Password must be at least 6 characters long']
     },
     role: {
         type: String,
         enum: ['main-doctor', 'sub-doctor'],
-        default: 'sub-doctor'
+        required: true
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Doctor',
+        ref: 'Auth',
         default: null
     }
 }, { timestamps: true });

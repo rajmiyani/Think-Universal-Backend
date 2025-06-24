@@ -9,48 +9,57 @@ const otpStore = new Map(); // Temporary OTP memory store
 
 // 🔐 DOCTOR CREDENTIALS
 
-const STATIC_MAIN_DOCTOR_EMAIL = "thinkuniversal@gmail.com";
+// const STATIC_EMAIL = "thinkuniversal@gmail.com";
 const STATIC_PASSWORD = "Doctor@123";
 
 export const loginDoctor = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // ✅ Validate input
+        // 1. Validate input
         if (!email || !password) {
             return res.status(400).json({ message: "Email and password are required" });
         }
 
-        // ✅ Find doctor in database
-        const doctor = await Doctor.findOne({ email });
+        // 2. Try to find the doctor using main_email or sub_email
+        let doctor = await authModel.findOne({ main_email: email });
+        console.log("Doctor",doctor);
+        
 
-        if (!doctor) {
+        let matchedAs = null;
+
+        if (doctor) {
+            matchedAs = "main";
+            if (doctor.main_password !== password) {
+                return res.status(401).json({ message: "Invalid password for main doctor" });
+            }
+        } else {
+            doctor = await authModel.findOne({ sub_email: email });
+            if (doctor) {
+                matchedAs = "sub";
+                if (doctor.sub_password !== password) {
+                    return res.status(401).json({ message: "Invalid password for sub doctor" });
+                }
+            }
+        }
+
+        // 3. Not found in either
+        if (!doctor || !matchedAs) {
             return res.status(404).json({ message: "Doctor not found" });
         }
 
-        // ✅ Main doctor login restriction
-        if (doctor.role === 'main-doctor' && email !== STATIC_MAIN_DOCTOR_EMAIL) {
-            return res.status(403).json({ message: "Access denied: Invalid main doctor email" });
-        }
-
-        // ✅ Static password check
-        if (password !== STATIC_PASSWORD) {
-            return res.status(401).json({ message: "Invalid password" });
-        }
-
-        // ✅ Generate JWT token
+        // 4. Generate token
         const token = generateToken(doctor._id, doctor.role);
 
         return res.status(200).json({
-            message: `${doctor.role === 'main-doctor' ? 'Main' : 'Sub'} doctor login successful`,
+            message: `${matchedAs === "main" ? "Main" : "Sub"} doctor login successful`,
             token,
             doctor: {
                 id: doctor._id,
-                email: doctor.email,
+                email,
                 role: doctor.role
             }
         });
-
     } catch (err) {
         console.error("Login Error:", err);
         return res.status(500).json({
