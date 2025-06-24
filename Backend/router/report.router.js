@@ -2,13 +2,17 @@ import express from 'express';
 import {
     getReports,
     uploadReport,
-    exportCSV
+    exportCSV,
+    createReport
 } from '../controllers/report.controller.js';
 import { reportFilterSchema } from '../validations/validationSchema.js';
 import validate from '../utils/validate.js';
 import upload from '../multer.js';
+import { verifyToken } from '../middleware/admin.middlware.js';
 
 const router = express.Router();
+
+router.post('/createReport', verifyToken, createReport)
 
 // GET /reports/getReports
 router.get('/getReports', validate(reportFilterSchema, 'query'), getReports);

@@ -5,10 +5,10 @@ import authMiddleware from '../middleware/prescription.middleware.js';
 const router = express.Router();
 
 // POST: Add a prescription
-router.post('/addPrescription/:reportId', authMiddleware, addPrescription);
+router.post('/addPrescription/:phoneNo', authMiddleware, addPrescription);
 
 // GET: Get all prescriptions for a report
-router.get('/getPrescription/:reportId', authMiddleware, getPrescriptions);
+router.get('/getPrescriptions/:mobile', authMiddleware, getPrescriptions);
 
 // Get all prescriptions (for admin)
 router.get('/getAllPrescriptions', getAllPrescriptions);

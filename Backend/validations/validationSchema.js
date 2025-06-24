@@ -518,7 +518,10 @@ export const getPrescriptionsParamSchema = Joi.object({
             return helpers.error("any.invalid");
         }
         return value;
-    }, 'ObjectId Validation').required().label("Report ID")
+    }, 'ObjectId Validation').required().label("Report ID"),
+    mobile: Joi.string().pattern(/^[6-9]\d{9}$/).required().messages({
+        'string.pattern.base': 'Mobile number must be valid 10-digit Indian format'
+    })
 });
 
 export const getAllPrescriptionsQuerySchema = Joi.object({
@@ -809,3 +812,75 @@ export const updateDoctorSchema = Joi.object({
     }).optional()
 })
     .prefs({ abortEarly: false, stripUnknown: true });
+
+
+export const createReportSchema = Joi.object({
+    firstName: Joi.string()
+        .min(2)
+        .max(50)
+        .required()
+        .messages({
+            'string.base': 'First name must be a string',
+            'string.empty': 'First name is required',
+            'string.min': 'First name must be at least 2 characters',
+            'string.max': 'First name cannot exceed 50 characters',
+            'any.required': 'First name is required'
+        }),
+    lastName: Joi.string()
+        .min(2)
+        .max(50)
+        .required()
+        .messages({
+            'string.base': 'Last name must be a string',
+            'string.empty': 'Last name is required',
+            'string.min': 'Last name must be at least 2 characters',
+            'string.max': 'Last name cannot exceed 50 characters',
+            'any.required': 'Last name is required'
+        }),
+    age: Joi.number()
+        .integer()
+        .min(0)
+        .max(130)
+        .required()
+        .messages({
+            'number.base': 'Age must be a number',
+            'number.min': 'Age cannot be negative',
+            'number.max': 'Age cannot exceed 130',
+            'any.required': 'Age is required'
+        }),
+    gender: Joi.string()
+        .valid('Male', 'Female', 'Other')
+        .required()
+        .messages({
+            'any.only': 'Gender must be Male, Female, or Other',
+            'any.required': 'Gender is required'
+        }),
+    doctor: Joi.string()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({
+            'string.empty': 'Doctor is required',
+            'string.min': 'Doctor name must be at least 2 characters',
+            'string.max': 'Doctor name cannot exceed 100 characters',
+            'any.required': 'Doctor is required'
+        }),
+    status: Joi.string()
+        .valid('Pending', 'Completed', 'Upcoming', 'Cancelled')
+        .optional(),
+    mobile: Joi.string()
+        .pattern(/^[0-9]{10,15}$/)
+        .optional()
+        .messages({
+            'string.pattern.base': 'Mobile number must be 10-15 digits'
+        }),
+    diagnosis: Joi.string()
+        .max(2000)
+        .allow('', null)
+        .optional(),
+    prescriptions: Joi.array()
+        .items(Joi.string().max(500))
+        .optional(),
+    patientId: Joi.string()
+        .optional()
+}).prefs({ abortEarly: false, stripUnknown: true });

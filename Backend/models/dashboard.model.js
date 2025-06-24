@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const dashboardSchema = new mongoose.Schema({
     doctorName: {
         type: String,
-        required: [true, 'Doctor name is required'],
+        required: [false, 'Doctor name is required'],
         minlength: [3, 'Doctor name must be at least 3 characters'],
         maxlength: [100, 'Doctor name cannot exceed 100 characters'],
         trim: true,
@@ -11,7 +11,7 @@ const dashboardSchema = new mongoose.Schema({
     },
     patientName: {
         type: String,
-        required: [true, 'Patient name is required'],
+        required: [false, 'Patient name is required'],
         minlength: [3, 'Patient name must be at least 3 characters'],
         maxlength: [100, 'Patient name cannot exceed 100 characters'],
         trim: true,
@@ -19,7 +19,7 @@ const dashboardSchema = new mongoose.Schema({
     },
     date: {
         type: Date,
-        required: [true, 'Date is required'],
+        required: [false, 'Date is required'],
         validate: {
             validator: function (v) {
                 return v && v <= new Date();
@@ -33,7 +33,7 @@ const dashboardSchema = new mongoose.Schema({
             values: ['Completed', 'Upcoming', 'Cancelled'],
             message: 'Status must be Completed, Upcoming, or Cancelled'
         },
-        required: [true, 'Status is required']
+        required: [false, 'Status is required']
     },
     revenue: {
         type: Number,
@@ -43,7 +43,7 @@ const dashboardSchema = new mongoose.Schema({
     },
     duration: {
         type: Number, // in minutes
-        required: [true, 'Duration is required'],
+        required: [false, 'Duration is required'],
         min: [5, 'Appointment must be at least 5 minutes'],
         max: [240, 'Appointment cannot exceed 4 hours']
     },
@@ -53,7 +53,7 @@ const dashboardSchema = new mongoose.Schema({
             values: ['Check-up', 'Follow-up', 'Consultation', 'Urgent'],
             message: 'Appointment type must be Check-up, Follow-up, Consultation, or Urgent'
         },
-        required: [true, 'Appointment type is required']
+        required: [false, 'Appointment type is required']
     },
 }, {
     timestamps: true,

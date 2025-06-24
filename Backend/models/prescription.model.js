@@ -1,17 +1,17 @@
 import mongoose from 'mongoose';
 
 const prescriptionSchema = new mongoose.Schema({
-    reportId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Report',
-        required: [false, 'Report reference is required'],
-        validate: {
-            validator: function (v) {
-                return mongoose.Types.ObjectId.isValid(v);
-            },
-            message: 'Invalid Report ID format'
-        }
-    },
+    // reportId: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: 'Report',
+    //     required: [false, 'Report reference is required'],
+    //     validate: {
+    //         validator: function (v) {
+    //             return mongoose.Types.ObjectId.isValid(v);
+    //         },
+    //         message: 'Invalid Report ID format'
+    //     }
+    // },
     prescriptionNote: {
         type: String,
         required: [true, 'Prescription note is required'],

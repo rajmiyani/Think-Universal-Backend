@@ -1,8 +1,89 @@
 import Report from '../models/report.model.js';
-import { reportFilterSchema } from '../validations/validationSchema.js'; // Joi schema for filters
+import { createReportSchema, reportFilterSchema } from '../validations/validationSchema.js'; // Joi schema for filters
 import { Parser } from 'json2csv';
 import fs from 'fs';
 import path from 'path';
+
+
+export const createReport = async (req, res) => {
+    try {
+        const { error, value } = createReportSchema.validate(req.body, { abortEarly: false });
+        if (error) {
+            const errors = error.details.map(e => e.message);
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors
+            });
+        }
+
+        const {
+            firstName,
+            lastName,
+            age,
+            gender,
+            doctor,
+            patient,
+            date,
+            fees,
+            status,
+            mobile,
+            diagnosis,
+            prescriptions
+        } = value;
+
+        const patientId = req.user?.id || req.user?._id;
+        if (!patientId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: patientId not found from token'
+            });
+        }
+
+        const reportData = {
+            firstName,
+            lastName,
+            age,
+            gender,
+            doctor,
+            patient,
+            date,
+            fees,
+            status,
+            mobile,
+            diagnosis,
+            prescriptions,
+            patientId
+        };
+
+        const report = new Report(reportData);
+        const savedReport = await report.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Report created successfully",
+            data: savedReport
+        });
+
+    } catch (err) {
+        console.error('❌ Error creating report:', err);
+
+        if (err.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: 'Duplicate entry detected. Please check your input.'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Error creating report",
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+    }
+};
+
+
 
 // GET /reports (with validation)
 export const getReports = async (req, res) => {
@@ -166,4 +247,3 @@ export const uploadReport = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Upload error', error: err.message });
     }
 };
-

@@ -1,9 +1,13 @@
 import mongoose from 'mongoose';
 
 const reportSchema = new mongoose.Schema({
+    firstName: { type: String, required: true, trim: true },
+    lastName: { type: String, required: true, trim: true },
+    age: { type: Number, required: true },
+    gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
     date: {
         type: Date,
-        required: [true, 'Report date is required'],
+        required: [false, 'Report date is required'],
         validate: {
             validator: function (v) {
                 // Date must not be in the past
@@ -22,7 +26,7 @@ const reportSchema = new mongoose.Schema({
     },
     patient: {
         type: String,
-        required: [true, 'Patient name or ID is required'],
+        required: [false, 'Patient name or ID is required'],
         minlength: [3, 'Patient must be at least 3 characters'],
         maxlength: [100, 'Patient cannot exceed 100 characters'],
         trim: true,
@@ -38,7 +42,7 @@ const reportSchema = new mongoose.Schema({
     },
     fees: {
         type: Number,
-        required: [true, 'Fees are required'],
+        required: [false, 'Fees are required'],
         min: [0, 'Fees cannot be negative'],
         max: [100000, 'Fees is unrealistically high']
     },
@@ -51,7 +55,12 @@ const reportSchema = new mongoose.Schema({
         type: String,
         trim: true,
         match: [/^[\w,\s-]+\.(pdf|jpg|jpeg|png)$/i, 'Report file must be a valid PDF or image filename']
-    }
+    },
+    mobile: {
+        type: String,
+        required: true
+    },
+    patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true, versionKey: false });
 
 // Index for efficient queries

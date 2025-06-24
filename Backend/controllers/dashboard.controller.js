@@ -51,8 +51,12 @@ const validateDateRange = async (query) => {
  */
 export const getDashboardSummary = async (req, res) => {
     try {
-        // 1️⃣ Validate optional query parameters
-        const { error, value } = dashboardSummaryQuerySchema.validate(req.query);
+        // 1. Validate optional date range from query
+        const { error, value } = dashboardSummaryQuerySchema.validate(req.query, {
+            abortEarly: false,
+            stripUnknown: true
+        });
+
         if (error) {
             return res.status(400).json({
                 success: false,
@@ -61,7 +65,7 @@ export const getDashboardSummary = async (req, res) => {
             });
         }
 
-        // 2️⃣ Determine date range (query params or default to current month)
+        // 2. Calculate date range
         const startDate = value.startDate
             ? moment(value.startDate).startOf('day').toDate()
             : moment().startOf('month').toDate();
@@ -70,41 +74,48 @@ export const getDashboardSummary = async (req, res) => {
             ? moment(value.endDate).endOf('day').toDate()
             : moment().endOf('month').toDate();
 
-        // 3️⃣ Get appointments for range
+        // 3. Fetch appointments within the range
         const appointments = await appointmentModel.find({
             date: { $gte: startDate, $lte: endDate }
-        }).lean();
+        }).populate('patient', '_id name').lean();
+        console.log("🧾 All Appointments:", appointments);
 
         const appointmentCount = appointments.length;
         const totalDuration = appointments.reduce((sum, a) => sum + (a.duration || 0), 0);
         const avgDuration = appointmentCount > 0 ? Math.round(totalDuration / appointmentCount) : 0;
 
-        // 4️⃣ Count unique patients
-        const patientIds = new Set(appointments.map(a => a.patient?.toString() || a.patientName)).size;
+        // 4. Count unique patients
+        const patientSet = new Set(
+            appointments.map(a => a.patient?._id?.toString() || a.patientName)
+        );
+        const patientCount = patientSet.size;
 
-        // 5️⃣ Get revenue from payment model
+        // 5. Fetch revenue data
         const payments = await paymentModel.find({
             date: { $gte: startDate, $lte: endDate }
         }).lean();
+        console.log("payments",payments);
 
         const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-        // 6️⃣ Save dashboard summary to MongoDB (Dashboard collection)
+        // 6. Save summary snapshot to Dashboard model
         await Dashboard.create({
             date: new Date(),
             revenue: totalRevenue,
-            appointmentCount,
-            patientCount: patientIds,
-            avgDuration
+            appointments: appointmentCount,
+            patients: patientCount,
+            avgDuration,
+            rangeStart: startDate,
+            rangeEnd: endDate
         });
 
-        // 7️⃣ Send response
+        // 7. Return response
         res.json({
             success: true,
             data: {
                 revenue: totalRevenue,
                 appointments: appointmentCount,
-                patients: patientIds,
+                patients: patientCount,
                 avgDuration
             },
             meta: {
@@ -118,7 +129,7 @@ export const getDashboardSummary = async (req, res) => {
         console.error('❌ Dashboard summary error:', err);
         res.status(500).json({
             success: false,
-            message: "Failed to generate dashboard summary",
+            message: 'Failed to generate dashboard summary',
             error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }

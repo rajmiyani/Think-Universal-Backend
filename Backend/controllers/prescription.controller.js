@@ -1,4 +1,5 @@
 import Prescription from '../models/prescription.model.js';
+import Report from '../models/report.model.js';
 import { getPrescriptionsParamSchema, prescriptionSchema, getAllPrescriptionsQuerySchema } from '../validations/validationSchema.js'
 
 // Add prescription to report (reportId from URL param, createdBy from user)
@@ -6,8 +7,12 @@ export const addPrescription = async (req, res) => {
     try {
         console.log("API Hit");
 
-        // ✅ Validate prescriptionNote and patient info
-        const { error, value } = prescriptionSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+        // ✅ Validate prescriptionNote (only note and date from body)
+        const { error, value } = prescriptionSchema.validate(req.body, {
+            abortEarly: false,
+            stripUnknown: true
+        });
+
         if (error) {
             return res.status(400).json({
                 success: false,
@@ -15,18 +20,16 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        const { firstName, lastName, prescriptionNote } = value;
+        const { prescriptionNote } = value;
+        const mobile = req.params.phoneNo;
 
-        // ✅ Find report by patient name
-        const report = await Report.findOne({
-            firstName: new RegExp('^' + firstName + '$', 'i'),
-            lastName: new RegExp('^' + lastName + '$', 'i')
-        });
+        // ✅ Find report using mobile number
+        const report = await Report.findOne({ mobile });
 
         if (!report) {
             return res.status(404).json({
                 success: false,
-                message: 'No report found for the specified patient name.'
+                message: 'No report found for the provided mobile number.'
             });
         }
 
@@ -75,7 +78,12 @@ export const addPrescription = async (req, res) => {
 // Get prescriptions for a specific report (reportId from URL param)
 export const getPrescriptions = async (req, res) => {
     try {
-        const { error, value } = getPrescriptionsParamSchema.validate(req.params, { abortEarly: false, stripUnknown: true });
+        // Validate mobile number format
+        const { error, value } = getPrescriptionsParamSchema.validate(req.params, {
+            abortEarly: false,
+            stripUnknown: true
+        });
+
         if (error) {
             return res.status(400).json({
                 success: false,
@@ -83,16 +91,31 @@ export const getPrescriptions = async (req, res) => {
             });
         }
 
+        const { mobile } = value;
         const { search } = req.query;
 
+        // 1️⃣ Find all reports matching this mobile number
+        const reports = await Report.find({ mobile });
+
+        if (!reports || reports.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No reports found for this mobile number'
+            });
+        }
+
+        const reportIds = reports.map(r => r._id);
+
+        // 2️⃣ Build prescription search filter
         const searchFilter = {
-            reportId: value.reportId
+            reportId: { $in: reportIds }
         };
 
         if (search) {
             searchFilter.prescriptionNote = { $regex: search, $options: 'i' };
         }
 
+        // 3️⃣ Find prescriptions
         const prescriptions = await Prescription.find(searchFilter).sort({ createdAt: -1 });
 
         res.status(200).json({
