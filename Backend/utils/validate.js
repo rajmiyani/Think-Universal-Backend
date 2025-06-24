@@ -28,8 +28,12 @@ const validate = (schema, property = 'body') => {
                 });
             }
 
-            // Replace request property with sanitized value
-            req[property] = value;
+            // ✅ SAFE ASSIGNMENT
+            if (property === 'query') {
+                req.validatedQuery = value;
+            } else {
+                req[property] = value;
+            }
 
             console.log(`✅ ${property} validated and sanitized`);
             next();
