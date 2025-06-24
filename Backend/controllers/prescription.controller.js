@@ -156,12 +156,15 @@ export const getPrescriptionsByDoctor = async (req, res) => {
             });
         }
 
-        // 🧠 Exact match - case-insensitive, ignore extra spaces
-        const doctorRegex = new RegExp(`^${doctorParam.replace(/\s+/g, ' ').trim()}$`, 'i');
+        // 🧠 More relaxed regex: ignore multiple spaces, case-insensitive
+        const doctorRegex = new RegExp(doctorParam.replace(/\s+/g, '\\s*'), 'i');
 
-        const reports = await Report.find({
-            doctor: { $regex: doctorRegex }
-        });
+        // 🧪 Debug: list all doctors
+        const allDoctors = await Report.distinct("doctor");
+        console.log("📚 All doctors in DB:", allDoctors);
+
+        // 🔍 Match reports
+        const reports = await Report.find({ doctor: { $regex: doctorRegex } });
 
         console.log("📋 Doctor Search:", doctorParam);
         console.log("📋 Reports matched:", reports.length);
@@ -172,7 +175,7 @@ export const getPrescriptionsByDoctor = async (req, res) => {
                 data: [],
                 debug: {
                     doctorParam,
-                    existingDoctors: await Report.distinct("doctor")
+                    existingDoctors: allDoctors
                 }
             });
         }
@@ -217,8 +220,12 @@ export const getPrescriptionsByDoctor = async (req, res) => {
 export const updatePrescription = async (req, res) => {
     try {
         const { phoneNo } = req.params;
+        
         const { prescriptionNote } = req.body;
-        const createdBy = req.user?.name;
+        
+        const createdBy = req.user?.name || req.body.createdBy || 'Unknown';
+        console.log(createdBy);
+        
 
         if (!prescriptionNote || prescriptionNote.length < 10) {
             return res.status(400).json({
@@ -227,16 +234,11 @@ export const updatePrescription = async (req, res) => {
             });
         }
 
-        if (!createdBy) {
-            return res.status(401).json({
-                success: false,
-                message: 'Unauthorized: doctor not found from token'
-            });
-        }
+        console.log("📞 Looking for:", phoneNo.trim());
+        console.log("👨‍⚕️ Looking doctor:", createdBy);
 
-        // 🔍 Find the latest prescription for this doctor and patient
         const latest = await Prescription.findOne({
-            patientMobile: phoneNo,
+            patientMobile: phoneNo.trim(),
             createdBy
         }).sort({ createdAt: -1 });
 
@@ -255,7 +257,6 @@ export const updatePrescription = async (req, res) => {
             message: 'Prescription updated successfully',
             data: latest
         });
-
     } catch (err) {
         console.error("🔥 Error in updateLatestPrescription:", err);
         return res.status(500).json({
@@ -265,3 +266,4 @@ export const updatePrescription = async (req, res) => {
         });
     }
 };
+
