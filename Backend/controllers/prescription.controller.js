@@ -8,7 +8,6 @@ export const addPrescription = async (req, res) => {
         console.log("📥 API Hit: /addPrescription/:phoneNo");
 
         // Validate request body
-        console.log("🔍 Validating request body...");
         const { error, value } = prescriptionSchema.validate(req.body, {
             abortEarly: false,
             stripUnknown: true
@@ -22,37 +21,36 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        const { prescriptionNote } = value;
+        const { prescriptionNote, createdBy: inputCreatedBy } = value;
         const mobile = req.params.phoneNo?.trim();
+
         console.log("📱 Mobile received:", mobile);
         console.log("📝 Prescription Note:", prescriptionNote);
 
         if (!mobile) {
-            console.log("❌ Missing mobile number in URL");
             return res.status(400).json({
                 success: false,
                 message: 'Patient mobile number is required in the URL.'
             });
         }
 
-        // Check if any report exists for this mobile number
-        const allReports = await Report.find({}, { mobile: 1 });
-        console.log("📋 All Report Mobiles in DB:");
-        allReports.forEach(r => console.log(`• '${r.mobile}'`));
-
-        // if (!reportExists) {
-        //     console.log("❌ No report found for the provided mobile number.");
-        //     return res.status(404).json({
-        //         success: false,
-        //         message: 'No report found for the provided mobile number.'
-        //     });
-        // }
-
-        const createdBy = req.user?.name || 'Unknown';
+        // 🧠 Use createdBy from req.user or req.body
+        const createdBy = req.user?.name || inputCreatedBy || 'Unknown';
         console.log("👨‍⚕️ Created By:", createdBy);
 
-        // Check for duplicate prescription
-        console.log("🔁 Checking for duplicate prescription...");
+        // ✅ Check if any report exists for this mobile number
+        const reports = await Report.find({}, { mobile: 1 }).lean();
+        const mobileFound = reports.some(r => String(r.mobile) === String(mobile));
+
+        if (!mobileFound) {
+            console.log("❌ No report found for the provided mobile number.");
+            return res.status(404).json({
+                success: false,
+                message: 'No report found for the provided mobile number.'
+            });
+        }
+
+        // 🔁 Check for duplicate prescription
         const duplicate = await Prescription.findOne({
             patientMobile: mobile,
             createdBy,
@@ -67,8 +65,7 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        // Create new prescription
-        console.log("💾 Saving new prescription...");
+        // 💾 Save new prescription
         const newPrescription = new Prescription({
             patientMobile: mobile,
             prescriptionNote,
@@ -76,6 +73,7 @@ export const addPrescription = async (req, res) => {
         });
 
         await newPrescription.save();
+
         console.log("✅ Prescription saved successfully:", newPrescription);
 
         return res.status(201).json({
