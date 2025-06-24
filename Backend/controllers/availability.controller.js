@@ -79,19 +79,15 @@ export const setAvailability = async (req, res) => {
 // 📆 Get Calendar Availability
 export const getAvailabilityDoctor = async (req, res) => {
     try {
-        const { firstName, lastName, start, end } = req.body;
+        const { firstName, lastName } = req.body;
 
         if (!firstName || !lastName) {
             return res.status(400).json({ success: false, message: 'Doctor name is required.' });
         }
 
-        // if (!start || !end) {
-        //     return res.status(400).json({ success: false, message: 'Start and end dates are required.' });
-        // }
-
         const doctor = await Doctor.findOne({
             firstName: new RegExp('^' + firstName + '$', 'i'),
-            lastName: new RegExp('^' + lastName + '$', 'i')
+            lastName: new RegExp('^' + lastName + '$', 'i'),
         });
 
         if (!doctor) {
@@ -104,20 +100,25 @@ export const getAvailabilityDoctor = async (req, res) => {
 
         let events = [];
 
+        // Define default range: current month
+        const today = dayjs();
+        const start = today.startOf('month');
+        const end = today.endOf('month');
+
         for (let slot of allSlots) {
             const modeList = Object.entries(slot.modes || {})
                 .filter(([_, value]) => value)
-                .map(([key]) => key); // ['audio', 'chat']
+                .map(([key]) => key);
 
             if (slot.isMonthly) {
                 let current = dayjs(slot.startMonth + '-01');
                 const endDate = dayjs(slot.endMonth + '-01').endOf('month');
                 const originalDay = dayjs(slot.date).date();
 
-                while (current.isBefore(endDate)) {
+                while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
                     const repeatedDate = current.date(originalDay);
 
-                    if (repeatedDate.isBefore(dayjs(start)) || repeatedDate.isAfter(dayjs(end))) {
+                    if (repeatedDate.isBefore(start) || repeatedDate.isAfter(end)) {
                         current = current.add(1, 'month');
                         continue;
                     }
@@ -129,22 +130,23 @@ export const getAvailabilityDoctor = async (req, res) => {
                         end: `${repeatedDate.format('YYYY-MM-DD')}T${slot.toTime}`,
                         allDay: false,
                         isMonthly: true,
-                        modes: modeList // 🟢 added mode info
+                        modes: modeList
                     });
 
                     current = current.add(1, 'month');
                 }
             } else {
-                if (dayjs(slot.date).isBefore(dayjs(start)) || dayjs(slot.date).isAfter(dayjs(end))) continue;
+                const slotDate = dayjs(slot.date);
+                if (slotDate.isBefore(start) || slotDate.isAfter(end)) continue;
 
                 events.push({
-                    id: slot._id,
+                    id: slot._id.toString(),
                     title: `${doctorFullName}: ${slot.fromTime} - ${slot.toTime}`,
-                    start: `${slot.date}T${slot.fromTime}`,
-                    end: `${slot.date}T${slot.toTime}`,
+                    start: `${slotDate.format('YYYY-MM-DD')}T${slot.fromTime}`,
+                    end: `${slotDate.format('YYYY-MM-DD')}T${slot.toTime}`,
                     allDay: false,
                     isMonthly: false,
-                    modes: modeList // 🟢 added mode info
+                    modes: modeList
                 });
             }
         }

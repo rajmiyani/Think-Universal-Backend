@@ -1,6 +1,6 @@
 import Prescription from '../models/prescription.model.js';
 import Report from '../models/report.model.js';
-import { getPrescriptionsParamSchema, prescriptionSchema, getAllPrescriptionsQuerySchema } from '../validations/validationSchema.js'
+import { getPrescriptionsParamSchema, prescriptionSchema } from '../validations/validationSchema.js'
 
 // Add prescription to report (reportId from URL param, createdBy from user)
 export const addPrescription = async (req, res) => {
@@ -147,63 +147,67 @@ export const getPrescriptions = async (req, res) => {
 
 export const getPrescriptionsByDoctor = async (req, res) => {
     try {
-        const doctor = req.params.doctorName?.trim();
+        const doctorParam = req.params.doctorName?.trim();
 
-        console.log("🔍 Doctor name from params:", doctor);
-        if (!doctor) {
+        if (!doctorParam) {
             return res.status(400).json({
                 success: false,
                 message: "Doctor name is required in URL"
             });
         }
 
-        // Step 1: Get all reports by doctor name (case-insensitive match)
+        // 🧠 Exact match - case-insensitive, ignore extra spaces
+        const doctorRegex = new RegExp(`^${doctorParam.replace(/\s+/g, ' ').trim()}$`, 'i');
+
         const reports = await Report.find({
-            doctor: { $regex: `^${doctor}$`, $options: 'i' }
+            doctor: { $regex: doctorRegex }
         });
-        console.log("📋 Reports found:", reports.length);
+
+        console.log("📋 Doctor Search:", doctorParam);
+        console.log("📋 Reports matched:", reports.length);
 
         if (!reports || reports.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No reports found for this doctor"
+            return res.status(200).json({
+                success: true,
+                data: [],
+                debug: {
+                    doctorParam,
+                    existingDoctors: await Report.distinct("doctor")
+                }
             });
         }
 
-        // Map patient mobiles to patient info
-        const mobileMap = {};
-        reports.forEach(report => {
-            mobileMap[report.mobile] = {
-                fullName: `${report.firstName} ${report.lastName}`,
-                date: report.date,
-                mobile: report.mobile
-            };
-        });
+        // 📝 Get last prescription for each patient
+        const patientData = await Promise.all(
+            reports.map(async (report) => {
+                const lastPrescription = await Prescription.findOne({
+                    patientMobile: report.mobile
+                }).sort({ createdAt: -1 });
 
-        const patientMobiles = Object.keys(mobileMap);
-
-        // Step 2: Get prescriptions created by this doctor for matched patients
-        const prescriptions = await Prescription.find({
-            patientMobile: { $in: patientMobiles },
-            createdBy: { $regex: `^${doctor}$`, $options: 'i' }
-        }).sort({ createdAt: -1 });
-
-        // Step 3: Attach patient info to each prescription
-        const enrichedPrescriptions = prescriptions.map(p => ({
-            ...p.toObject(),
-            patientInfo: mobileMap[p.patientMobile] || {}
-        }));
+                return {
+                    fullName: `${report.firstName} ${report.lastName}`,
+                    mobile: report.mobile,
+                    gender: report.gender,
+                    age: report.age,
+                    date: report.date,
+                    status: report.status || '',
+                    reportId: report._id,
+                    lastPrescription: lastPrescription?.prescriptionNote || 'No prescription yet',
+                    prescriptionId: lastPrescription?._id || null
+                };
+            })
+        );
 
         return res.status(200).json({
             success: true,
-            data: enrichedPrescriptions
+            data: patientData
         });
 
     } catch (err) {
-        console.error("🔥 Error in getPrescriptionsByDoctor:", err);
+        console.error("🔥 Error:", err);
         return res.status(500).json({
             success: false,
-            message: "Failed to get prescriptions by doctor",
+            message: "Failed to fetch patients for this doctor",
             error: err.message
         });
     }
