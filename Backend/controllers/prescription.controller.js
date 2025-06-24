@@ -108,7 +108,7 @@ export const getPrescriptions = async (req, res) => {
         const phoneNo = value.phoneNo.toString().trim();
         const { search } = req.query;
 
-        console.log("📱 Fetching prescriptions for:", phoneNo);
+        console.log("📱 Fetching last prescription for:", phoneNo);
 
         const filter = {
             patientMobile: phoneNo
@@ -118,26 +118,28 @@ export const getPrescriptions = async (req, res) => {
             filter.prescriptionNote = { $regex: search, $options: 'i' };
         }
 
-        // ✅ Sort by createdAt descending to get latest first
-        const prescriptions = await Prescription.find(filter).sort({ createdAt: -1 });
+        // ✅ Get only the latest one
+        const lastPrescription = await Prescription
+            .findOne(filter)
+            .sort({ createdAt: -1 }); // Latest first
 
-        if (!prescriptions || prescriptions.length === 0) {
+        if (!lastPrescription) {
             return res.status(404).json({
                 success: false,
-                message: 'No prescriptions found for this mobile number'
+                message: 'No prescription found for this mobile number'
             });
         }
 
         return res.status(200).json({
             success: true,
-            data: prescriptions
+            data: lastPrescription
         });
 
     } catch (err) {
         console.error("🔥 Error in getPrescriptions:", err);
         return res.status(500).json({
             success: false,
-            message: 'Failed to fetch prescriptions',
+            message: 'Failed to fetch prescription',
             error: err.message
         });
     }
