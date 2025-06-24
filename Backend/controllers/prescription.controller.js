@@ -92,7 +92,7 @@ export const addPrescription = async (req, res) => {
 // Get prescriptions for a specific report (reportId from URL param)
 export const getPrescriptions = async (req, res) => {
     try {
-        // Validate phone number from params
+        // ✅ Validate phone number from URL param
         const { error, value } = getPrescriptionsParamSchema.validate(req.params, {
             abortEarly: false,
             stripUnknown: true
@@ -105,48 +105,47 @@ export const getPrescriptions = async (req, res) => {
             });
         }
 
-        const { phoneNo } = value;
+        const phoneNo = value.phoneNo.toString().trim();
         const { search } = req.query;
 
-        console.log("🔍 Looking for reports with mobile:", phoneNo);
+        console.log("📱 Looking for prescriptions of patientMobile:", phoneNo);
 
-        // 1️⃣ Find all reports matching this phone number
-        const reports = await Report.find({ mobile: phoneNo });
-
-        if (!reports || reports.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'No reports found for this mobile number'
-            });
-        }
-
-        const reportIds = reports.map(r => r._id);
-
-        // 2️⃣ Build prescription search filter
-        const searchFilter = {
-            reportId: { $in: reportIds }
+        // ✅ Build query filter based on patientMobile
+        const filter = {
+            patientMobile: phoneNo
         };
 
         if (search) {
-            searchFilter.prescriptionNote = { $regex: search, $options: 'i' };
+            filter.prescriptionNote = { $regex: search, $options: 'i' };
         }
 
-        // 3️⃣ Find prescriptions
-        const prescriptions = await Prescription.find(searchFilter).sort({ createdAt: -1 });
+        // ✅ Fetch prescriptions based on patientMobile
+        const prescriptions = await Prescription.find(filter).sort({ createdAt: -1 });
 
-        res.status(200).json({
+        if (!prescriptions || prescriptions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No prescriptions found for this mobile number'
+            });
+        }
+
+        return res.status(200).json({
             success: true,
             data: prescriptions
         });
 
     } catch (err) {
-        res.status(500).json({
+        console.error("🔥 Error in getPrescriptions:", err);
+        return res.status(500).json({
             success: false,
             message: 'Failed to fetch prescriptions',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            error: err.message
         });
     }
 };
+
+
+
 
 export const getAllPrescriptions = async (req, res) => {
     try {
