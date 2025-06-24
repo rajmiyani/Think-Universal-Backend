@@ -5,15 +5,17 @@ import { getPrescriptionsParamSchema, prescriptionSchema, getAllPrescriptionsQue
 // Add prescription to report (reportId from URL param, createdBy from user)
 export const addPrescription = async (req, res) => {
     try {
-        console.log("API Hit");
+        console.log("📥 API Hit: /addPrescription/:phoneNo");
 
-        // ✅ Validate prescriptionNote (only note and date from body)
+        // Validate request body
+        console.log("🔍 Validating request body...");
         const { error, value } = prescriptionSchema.validate(req.body, {
             abortEarly: false,
             stripUnknown: true
         });
 
         if (error) {
+            console.log("❌ Validation error:", error.details.map(e => e.message));
             return res.status(400).json({
                 success: false,
                 errors: error.details.map(e => e.message)
@@ -21,52 +23,69 @@ export const addPrescription = async (req, res) => {
         }
 
         const { prescriptionNote } = value;
-        const mobile = req.params.phoneNo;
+        const mobile = req.params.phoneNo?.trim();
+        console.log("📱 Mobile received:", mobile);
+        console.log("📝 Prescription Note:", prescriptionNote);
 
-        // ✅ Find report using mobile number
-        const report = await Report.findOne({ mobile });
-
-        if (!report) {
-            return res.status(404).json({
+        if (!mobile) {
+            console.log("❌ Missing mobile number in URL");
+            return res.status(400).json({
                 success: false,
-                message: 'No report found for the provided mobile number.'
+                message: 'Patient mobile number is required in the URL.'
             });
         }
 
-        const createdBy = req.user?.name || 'Unknown';
+        // Check if any report exists for this mobile number
+        const allReports = await Report.find({}, { mobile: 1 });
+        console.log("📋 All Report Mobiles in DB:");
+        allReports.forEach(r => console.log(`• '${r.mobile}'`));
 
-        // ❌ Prevent duplicate prescriptions
+        // if (!reportExists) {
+        //     console.log("❌ No report found for the provided mobile number.");
+        //     return res.status(404).json({
+        //         success: false,
+        //         message: 'No report found for the provided mobile number.'
+        //     });
+        // }
+
+        const createdBy = req.user?.name || 'Unknown';
+        console.log("👨‍⚕️ Created By:", createdBy);
+
+        // Check for duplicate prescription
+        console.log("🔁 Checking for duplicate prescription...");
         const duplicate = await Prescription.findOne({
-            reportId: report._id,
+            patientMobile: mobile,
             createdBy,
             prescriptionNote
         });
 
         if (duplicate) {
+            console.log("⚠️ Duplicate prescription found:", duplicate);
             return res.status(409).json({
                 success: false,
-                message: 'Duplicate prescription detected for this report and creator.'
+                message: 'Duplicate prescription for this patient and creator.'
             });
         }
 
-        // ✅ Save prescription
+        // Create new prescription
+        console.log("💾 Saving new prescription...");
         const newPrescription = new Prescription({
-            reportId: report._id,
+            patientMobile: mobile,
             prescriptionNote,
             createdBy
         });
 
         await newPrescription.save();
-
-        const result = newPrescription.toObject();
-        delete result.__v;
+        console.log("✅ Prescription saved successfully:", newPrescription);
 
         return res.status(201).json({
             success: true,
             message: 'Prescription added successfully',
-            data: result
+            data: newPrescription
         });
+
     } catch (err) {
+        console.error("🔥 Error in addPrescription:", err);
         return res.status(500).json({
             success: false,
             message: 'Failed to add prescription',

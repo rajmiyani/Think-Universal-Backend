@@ -19,6 +19,11 @@ const prescriptionSchema = new mongoose.Schema({
         minlength: [10, 'Prescription note must be at least 10 characters'],
         maxlength: [2000, 'Prescription note cannot exceed 2000 characters']
     },
+    patientMobile: {
+        type: String,
+        required: true,
+        trim: true
+    },
     createdBy: {
         type: String, // If you use ObjectId for doctor reference, change to mongoose.Schema.Types.ObjectId and add ref
         required: [true, 'Created by (doctor) is required'],
