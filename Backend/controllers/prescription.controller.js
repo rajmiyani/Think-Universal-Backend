@@ -146,50 +146,120 @@ export const getPrescriptions = async (req, res) => {
 };
 
 
-export const getAllPrescriptions = async (req, res) => {
+export const getPrescriptionsByDoctor = async (req, res) => {
     try {
-        // Validate query parameters
-        const { error, value } = getAllPrescriptionsQuerySchema.validate(req.query, { abortEarly: false, stripUnknown: true });
-        if (error) {
+        const doctor = req.params.doctorName.trim();
+        const { search } = req.query;
+
+        if (!doctor) {
             return res.status(400).json({
                 success: false,
-                errors: error.details.map(e => e.message)
+                message: "Doctor name is required in URL"
             });
         }
 
-        const { page, limit, search } = value;
-        const skip = (page - 1) * limit;
+        // Step 1: Get all reports by this doctor
+        const reports = await Report.find({ doctor });
 
-        // 🔍 Search filter
-        const searchFilter = search ? {
-            $or: [
-                { prescriptionNote: { $regex: search, $options: 'i' } },
-                { createdBy: { $regex: search, $options: 'i' } }
-            ]
-        } : {};
+        if (!reports || reports.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No reports found for this doctor"
+            });
+        }
 
-        // Total count for pagination
-        const total = await Prescription.countDocuments(searchFilter);
-
-        const prescriptions = await Prescription.find(searchFilter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        res.status(200).json({
-            success: true,
-            data: prescriptions,
-            pagination: {
-                total,
-                page,
-                pages: Math.ceil(total / limit)
-            }
+        const mobileMap = {}; // Map mobile to patient info
+        reports.forEach(r => {
+            mobileMap[r.mobile] = {
+                fullName: `${r.firstName} ${r.lastName}`,
+                date: r.date,
+                mobile: r.mobile
+            };
         });
+
+        const mobiles = Object.keys(mobileMap);
+
+        // Step 2: Filter prescriptions by patientMobile and createdBy
+        const filter = {
+            patientMobile: { $in: mobiles },
+            createdBy: doctor
+        };
+
+        if (search) {
+            filter.prescriptionNote = { $regex: search, $options: 'i' };
+        }
+
+        const prescriptions = await Prescription.find(filter).sort({ createdAt: -1 });
+
+        // Step 3: Attach patient details to each prescription
+        const enriched = prescriptions.map(p => ({
+            ...p.toObject(),
+            patientInfo: mobileMap[p.patientMobile] || {}
+        }));
+
+        return res.status(200).json({
+            success: true,
+            data: enriched
+        });
+
     } catch (err) {
-        res.status(500).json({
+        console.error("🔥 Error in getPrescriptionsByDoctor:", err);
+        return res.status(500).json({
             success: false,
-            message: 'Failed to fetch all prescriptions',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            message: "Failed to get prescriptions by doctor",
+            error: err.message
+        });
+    }
+};
+
+export const updatePrescription = async (req, res) => {
+    try {
+        const { phoneNo } = req.params;
+        const { prescriptionNote } = req.body;
+        const createdBy = req.user?.name;
+
+        if (!prescriptionNote || prescriptionNote.length < 10) {
+            return res.status(400).json({
+                success: false,
+                message: 'Prescription note must be at least 10 characters'
+            });
+        }
+
+        if (!createdBy) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: doctor not found from token'
+            });
+        }
+
+        // 🔍 Find the latest prescription for this doctor and patient
+        const latest = await Prescription.findOne({
+            patientMobile: phoneNo,
+            createdBy
+        }).sort({ createdAt: -1 });
+
+        if (!latest) {
+            return res.status(404).json({
+                success: false,
+                message: 'No prescription found for this patient and doctor'
+            });
+        }
+
+        latest.prescriptionNote = prescriptionNote;
+        await latest.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Prescription updated successfully',
+            data: latest
+        });
+
+    } catch (err) {
+        console.error("🔥 Error in updateLatestPrescription:", err);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update prescription',
+            error: err.message
         });
     }
 };
