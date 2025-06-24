@@ -148,8 +148,11 @@ export const getPrescriptions = async (req, res) => {
 
 export const getPrescriptionsByDoctor = async (req, res) => {
     try {
-        const doctor = req.params.doctorName.trim();
+        const doctor = req.params.doctorName?.trim();
         const { search } = req.query;
+
+        console.log("🔍 Doctor name from params:", doctor);
+        console.log("🔍 Search keyword:", search);
 
         if (!doctor) {
             return res.status(400).json({
@@ -160,6 +163,8 @@ export const getPrescriptionsByDoctor = async (req, res) => {
 
         // Step 1: Get all reports by this doctor
         const reports = await Report.find({ doctor });
+        console.log("📋 Total reports found:", reports.length);
+        console.log("📋 Reports:", reports);
 
         if (!reports || reports.length === 0) {
             return res.status(404).json({
@@ -178,6 +183,7 @@ export const getPrescriptionsByDoctor = async (req, res) => {
         });
 
         const mobiles = Object.keys(mobileMap);
+        console.log("📱 Patient mobiles extracted from reports:", mobiles);
 
         // Step 2: Filter prescriptions by patientMobile and createdBy
         const filter = {
@@ -189,13 +195,18 @@ export const getPrescriptionsByDoctor = async (req, res) => {
             filter.prescriptionNote = { $regex: search, $options: 'i' };
         }
 
+        console.log("🔍 Final prescription filter:", filter);
+
         const prescriptions = await Prescription.find(filter).sort({ createdAt: -1 });
+        console.log("📜 Prescriptions found:", prescriptions.length);
 
         // Step 3: Attach patient details to each prescription
         const enriched = prescriptions.map(p => ({
             ...p.toObject(),
             patientInfo: mobileMap[p.patientMobile] || {}
         }));
+
+        console.log("✅ Enriched prescriptions:", enriched);
 
         return res.status(200).json({
             success: true,
@@ -211,6 +222,7 @@ export const getPrescriptionsByDoctor = async (req, res) => {
         });
     }
 };
+
 
 export const updatePrescription = async (req, res) => {
     try {
