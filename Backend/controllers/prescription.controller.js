@@ -92,7 +92,7 @@ export const addPrescription = async (req, res) => {
 // Get prescriptions for a specific report (reportId from URL param)
 export const getPrescriptions = async (req, res) => {
     try {
-        // Validate mobile number format
+        // Validate phone number from params
         const { error, value } = getPrescriptionsParamSchema.validate(req.params, {
             abortEarly: false,
             stripUnknown: true
@@ -105,11 +105,13 @@ export const getPrescriptions = async (req, res) => {
             });
         }
 
-        const { mobile } = value;
+        const { phoneNo } = value;
         const { search } = req.query;
 
-        // 1️⃣ Find all reports matching this mobile number
-        const reports = await Report.find({ mobile });
+        console.log("🔍 Looking for reports with mobile:", phoneNo);
+
+        // 1️⃣ Find all reports matching this phone number
+        const reports = await Report.find({ mobile: phoneNo });
 
         if (!reports || reports.length === 0) {
             return res.status(404).json({
@@ -136,6 +138,7 @@ export const getPrescriptions = async (req, res) => {
             success: true,
             data: prescriptions
         });
+
     } catch (err) {
         res.status(500).json({
             success: false,

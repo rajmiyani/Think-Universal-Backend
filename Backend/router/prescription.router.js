@@ -8,7 +8,7 @@ const router = express.Router();
 router.post('/addPrescription/:phoneNo', authMiddleware, addPrescription);
 
 // GET: Get all prescriptions for a report
-router.get('/getPrescriptions/:mobile', authMiddleware, getPrescriptions);
+router.get('/getPrescriptions/:phoneNo', authMiddleware, getPrescriptions);
 
 // Get all prescriptions (for admin)
 router.get('/getAllPrescriptions', getAllPrescriptions);

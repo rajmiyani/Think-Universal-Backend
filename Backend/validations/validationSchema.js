@@ -513,15 +513,13 @@ export const prescriptionSchema = Joi.object({
 
 // For validating route param `reportId`
 export const getPrescriptionsParamSchema = Joi.object({
-    reportId: Joi.string().custom((value, helpers) => {
-        if (!mongoose.Types.ObjectId.isValid(value)) {
-            return helpers.error("any.invalid");
-        }
-        return value;
-    }, 'ObjectId Validation').required().label("Report ID"),
-    mobile: Joi.string().pattern(/^[6-9]\d{9}$/).required().messages({
-        'string.pattern.base': 'Mobile number must be valid 10-digit Indian format'
-    })
+    phoneNo: Joi.string()
+        .pattern(/^[6-9]\d{9}$/)
+        .required()
+        .messages({
+            'string.pattern.base': 'Phone number must be a valid 10-digit Indian number.',
+            'any.required': 'Phone number is required.'
+        })
 });
 
 export const getAllPrescriptionsQuerySchema = Joi.object({
