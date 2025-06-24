@@ -16,28 +16,29 @@ export const loginDoctor = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // ✅ Validate input
         if (!email || !password) {
             return res.status(400).json({ message: "Email and password are required" });
         }
 
-        // 🔍 Find doctor from DB
-        const doctor = await authModel.findOne({ email });
+        // ✅ Find doctor in database
+        const doctor = await Doctor.findOne({ email });
 
         if (!doctor) {
             return res.status(404).json({ message: "Doctor not found" });
         }
 
-        // ✅ Password must match static password
+        // ✅ Main doctor login restriction
+        if (doctor.role === 'main-doctor' && email !== STATIC_MAIN_DOCTOR_EMAIL) {
+            return res.status(403).json({ message: "Access denied: Invalid main doctor email" });
+        }
+
+        // ✅ Static password check
         if (password !== STATIC_PASSWORD) {
             return res.status(401).json({ message: "Invalid password" });
         }
 
-        // 🔒 Only one allowed main doctor email
-        if (doctor.role === "main-doctor" && email !== STATIC_MAIN_DOCTOR_EMAIL) {
-            return res.status(403).json({ message: "Unauthorized main doctor access" });
-        }
-
-        // 🪙 Generate token
+        // ✅ Generate JWT token
         const token = generateToken(doctor._id, doctor.role);
 
         return res.status(200).json({
@@ -52,7 +53,10 @@ export const loginDoctor = async (req, res) => {
 
     } catch (err) {
         console.error("Login Error:", err);
-        return res.status(500).json({ message: "Internal server error", error: err.message });
+        return res.status(500).json({
+            message: "Internal server error",
+            error: err.message
+        });
     }
 };
 
