@@ -92,7 +92,7 @@ export const addPrescription = async (req, res) => {
 // Get prescriptions for a specific report (reportId from URL param)
 export const getPrescriptions = async (req, res) => {
     try {
-        // ✅ Validate phone number from URL param
+        // Validate phone number from params
         const { error, value } = getPrescriptionsParamSchema.validate(req.params, {
             abortEarly: false,
             stripUnknown: true
@@ -108,9 +108,8 @@ export const getPrescriptions = async (req, res) => {
         const phoneNo = value.phoneNo.toString().trim();
         const { search } = req.query;
 
-        console.log("📱 Looking for prescriptions of patientMobile:", phoneNo);
+        console.log("📱 Fetching prescriptions for:", phoneNo);
 
-        // ✅ Build query filter based on patientMobile
         const filter = {
             patientMobile: phoneNo
         };
@@ -119,7 +118,7 @@ export const getPrescriptions = async (req, res) => {
             filter.prescriptionNote = { $regex: search, $options: 'i' };
         }
 
-        // ✅ Fetch prescriptions based on patientMobile
+        // ✅ Sort by createdAt descending to get latest first
         const prescriptions = await Prescription.find(filter).sort({ createdAt: -1 });
 
         if (!prescriptions || prescriptions.length === 0) {
@@ -143,8 +142,6 @@ export const getPrescriptions = async (req, res) => {
         });
     }
 };
-
-
 
 
 export const getAllPrescriptions = async (req, res) => {
