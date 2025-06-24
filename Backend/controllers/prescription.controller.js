@@ -7,7 +7,7 @@ export const addPrescription = async (req, res) => {
     try {
         console.log("📥 API Hit: /addPrescription/:phoneNo");
 
-        // Validate request body
+        // ✅ Validate request body
         const { error, value } = prescriptionSchema.validate(req.body, {
             abortEarly: false,
             stripUnknown: true
@@ -24,9 +24,6 @@ export const addPrescription = async (req, res) => {
         const { prescriptionNote, createdBy: inputCreatedBy } = value;
         const mobile = req.params.phoneNo?.trim();
 
-        console.log("📱 Mobile received:", mobile);
-        console.log("📝 Prescription Note:", prescriptionNote);
-
         if (!mobile) {
             return res.status(400).json({
                 success: false,
@@ -34,15 +31,16 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        // 🧠 Use createdBy from req.user or req.body
+        console.log("📱 Mobile received:", mobile);
+        console.log("📝 Prescription Note:", prescriptionNote);
+
+        // 🧠 Use createdBy from user or request body
         const createdBy = req.user?.name || inputCreatedBy || 'Unknown';
         console.log("👨‍⚕️ Created By:", createdBy);
 
-        // ✅ Check if any report exists for this mobile number
-        const reports = await Report.find({}, { mobile: 1 }).lean();
-        const mobileFound = reports.some(r => String(r.mobile) === String(mobile));
-
-        if (!mobileFound) {
+        // ✅ Ensure report exists for the given mobile
+        const reportExists = await Report.exists({ mobile });
+        if (!reportExists) {
             console.log("❌ No report found for the provided mobile number.");
             return res.status(404).json({
                 success: false,
@@ -50,7 +48,7 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        // 🔁 Check for duplicate prescription
+        // ✅ Check for duplicate prescription (same patient, same note, same creator)
         const duplicate = await Prescription.findOne({
             patientMobile: mobile,
             createdBy,
@@ -65,7 +63,7 @@ export const addPrescription = async (req, res) => {
             });
         }
 
-        // 💾 Save new prescription
+        // ✅ Save new prescription
         const newPrescription = new Prescription({
             patientMobile: mobile,
             prescriptionNote,
@@ -73,8 +71,7 @@ export const addPrescription = async (req, res) => {
         });
 
         await newPrescription.save();
-
-        console.log("✅ Prescription saved successfully:", newPrescription);
+        console.log("✅ Prescription saved:", newPrescription);
 
         return res.status(201).json({
             success: true,
