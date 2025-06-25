@@ -14,11 +14,18 @@ export const setAvailability = async (req, res) => {
             });
         }
 
-        // 🔍 Find doctor by name
-        const doctor = await Doctor.findOne({
-            firstName: new RegExp('^' + value.firstName + '$', 'i'),
-            lastName: new RegExp('^' + value.lastName + '$', 'i')
-        });
+        let doctor;
+
+        // 🧠 Check if main doctor is adding for a sub doctor
+        if (value.firstName && value.lastName && req.user.role === 'main') {
+            doctor = await Doctor.findOne({
+                firstName: new RegExp('^' + value.firstName + '$', 'i'),
+                lastName: new RegExp('^' + value.lastName + '$', 'i')
+            });
+        } else {
+            // 👤 Sub doctor updating their own availability
+            doctor = await Doctor.findById(req.user.id);
+        }
 
         if (!doctor) {
             return res.status(404).json({ success: false, message: 'Doctor not found' });
@@ -43,7 +50,7 @@ export const setAvailability = async (req, res) => {
             });
         }
 
-        // ✅ Create availability (no modes/startMonth)
+        // ✅ Save availability
         const newAvailability = await Availability.create({
             doctorId: doctor._id,
             firstName: doctor.firstName,
@@ -56,64 +63,53 @@ export const setAvailability = async (req, res) => {
             modes: value.modes
         });
 
-        const responseData = newAvailability.toObject();
-        delete responseData.__v;
-
         return res.status(201).json({
             success: true,
             message: 'Availability added successfully',
-            data: responseData
+            data: {
+                ...newAvailability.toObject(),
+                __v: undefined
+            }
         });
     } catch (err) {
-        console.error('Availability Error:', err);
+        console.error('❌ Availability Error:', err);
         return res.status(500).json({
             success: false,
             message: 'Server error',
-            error: err.message,
-            stack: err.stack
+            error: err.message
         });
     }
 };
 
-
 // 📆 Get Calendar Availability
 export const getAvailabilityDoctor = async (req, res) => {
     try {
-        const { firstName, lastName } = req.body;
-
-        if (!firstName || !lastName) {
-            return res.status(400).json({ success: false, message: 'Doctor name is required.' });
+        const doctors = await Doctor.find({});
+        if (!doctors.length) {
+            return res.status(404).json({ success: false, message: 'No doctors found' });
         }
 
-        const doctor = await Doctor.findOne({
-            firstName: new RegExp('^' + firstName + '$', 'i'),
-            lastName: new RegExp('^' + lastName + '$', 'i'),
-        });
-
-        if (!doctor) {
-            return res.status(404).json({ success: false, message: 'Doctor not found.' });
-        }
-
-        const doctorId = doctor._id;
-        const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
-        const allSlots = await Availability.find({ doctorId });
-
-        let events = [];
-
-        // Define default range: current month
+        const allSlots = await Availability.find({});
         const today = dayjs();
         const start = today.startOf('month');
         const end = today.endOf('month');
 
+        let events = [];
+
         for (let slot of allSlots) {
+            const doctor = doctors.find(d => d._id.toString() === slot.doctorId.toString());
+            if (!doctor) continue;
+
+            const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
+
             const modeList = Object.entries(slot.modes || {})
                 .filter(([_, value]) => value)
                 .map(([key]) => key);
 
             if (slot.isMonthly) {
-                let current = dayjs(slot.startMonth + '-01');
+                let current = dayjs(slot.date);
                 const endDate = dayjs(slot.endMonth + '-01').endOf('month');
-                const originalDay = dayjs(slot.date).date();
+                const originalDay = current.date();
 
                 while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
                     const repeatedDate = current.date(originalDay);
@@ -156,7 +152,7 @@ export const getAvailabilityDoctor = async (req, res) => {
             events
         });
     } catch (err) {
-        console.error('❌ getCalendarAvailability error:', err);
-        return res.status(500).json({ success: false, message: 'Server error.' });
+        console.error('❌ getAllDoctorsAvailability Error:', err);
+        return res.status(500).json({ success: false, message: 'Server error', error: err.message });
     }
 };
