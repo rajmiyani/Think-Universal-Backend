@@ -16,7 +16,6 @@ export const loginDoctor = async (req, res) => {
     try {
         const { email, password, role } = req.body;
 
-        // 1. Validate input
         if (!email || !password || !role) {
             return res.status(400).json({ message: "Email, password, and role are required" });
         }
@@ -25,14 +24,14 @@ export const loginDoctor = async (req, res) => {
             return res.status(400).json({ message: "Invalid role. Must be 'main' or 'sub'" });
         }
 
-        // 2. Fetch doctor from DB (force include password)
+        // 🔍 Match by email and role
         const doctor = await authModel.findOne({ email }).select('+password');
         if (!doctor) {
-            return res.status(404).json({ message: "Doctor not found for this email" });
+            return res.status(404).json({ message: "Doctor not found for this role" });
         }
 
-        // 4. Generate token
-        const token = generateToken(doctor._id, role, doctor.email);
+        // ✅ Generate token with real ObjectId
+        const token = generateToken(doctor._id.toString(), role, doctor.email);
 
         return res.status(200).json({
             message: `${role.charAt(0).toUpperCase() + role.slice(1)} doctor login successful`,

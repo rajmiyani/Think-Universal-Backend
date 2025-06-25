@@ -84,11 +84,18 @@ export const updateDoctorProfile = async (req, res) => {
     try {
         const { id, email, role } = req.user;
 
-        const doctor = await Doctor.findOne({ _id: id, email, role });
+        // 🔍 Match with correct role title in DB
+        const doctor = await Doctor.findOne({
+            _id: id,
+            email,
+            role: role === "main" ? "Main Doctor" : "Sub Doctor"
+        });
+
         if (!doctor) {
             return res.status(404).json({ success: false, message: "Doctor not found in database" });
         }
 
+        // ✅ Validate body
         const { error, value } = updateDoctorSchema.validate(req.body, { abortEarly: false });
         if (error) {
             return res.status(400).json({
@@ -98,6 +105,7 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
+        // 🛡 Check for duplicate email
         if (value.email && value.email !== doctor.email) {
             const exists = await Doctor.findOne({ email: value.email, _id: { $ne: doctor._id } });
             if (exists) {
@@ -105,6 +113,7 @@ export const updateDoctorProfile = async (req, res) => {
             }
         }
 
+        // 🛡 Check for duplicate phone
         if (value.phoneNo && value.phoneNo !== doctor.phoneNo) {
             const exists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctor._id } });
             if (exists) {
@@ -112,6 +121,7 @@ export const updateDoctorProfile = async (req, res) => {
             }
         }
 
+        // 📦 Handle avatar
         if (req.file) {
             value.avatar = {
                 data: req.file.buffer,
@@ -119,6 +129,7 @@ export const updateDoctorProfile = async (req, res) => {
             };
         }
 
+        // 🛠 Update
         const updatedDoctor = await Doctor.findByIdAndUpdate(
             doctor._id,
             { $set: value },
@@ -130,6 +141,7 @@ export const updateDoctorProfile = async (req, res) => {
             message: "Profile updated successfully",
             doctor: updatedDoctor
         });
+
     } catch (err) {
         console.error("❌ Update Error:", err);
         return res.status(500).json({

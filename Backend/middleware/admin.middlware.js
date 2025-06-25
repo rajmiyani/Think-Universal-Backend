@@ -16,7 +16,7 @@ export const verifyToken = async (req, res, next) => {
         }
 
         req.user = {
-            id: decoded.id,
+            id: typeof decoded.id === 'string' ? decoded.id : decoded.id.toString(),
             role: decoded.role,
             email: decoded.email, // ✅ add this
         };
