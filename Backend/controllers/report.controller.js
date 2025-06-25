@@ -28,6 +28,41 @@ export const getAllReports = async (req, res) => {
     }
 };
 
+export const getReportByMobile = async (req, res) => {
+    try {
+        const mobile = req.params.mobile;
+
+        if (!mobile || !/^\d{10}$/.test(mobile)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or missing mobile number'
+            });
+        }
+
+        const reports = await Report.find({ mobile }).sort({ date: -1 });
+
+        if (!reports.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'No reports found for this mobile number'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Reports fetched successfully',
+            data: reports
+        });
+
+    } catch (err) {
+        console.error("❌ Error in getReportByMobile:", err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: err.message
+        });
+    }
+};
 
 export const updateReports = async (req, res) => {
     try {

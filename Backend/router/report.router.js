@@ -1,6 +1,7 @@
 import express from 'express';
 import {
     getAllReports,
+    getReportByMobile,
     updateReports,
     uploadReport,
     exportCSV,
@@ -15,6 +16,7 @@ const router = express.Router();
 
 router.get('/getAllReports', verifyToken, getAllReports);
 router.patch('/updateReports/:id', verifyToken, updateReports);
+router.get('/getReport/:mobile', verifyToken, getReportByMobile);
 
 
 // GET /reports/export
