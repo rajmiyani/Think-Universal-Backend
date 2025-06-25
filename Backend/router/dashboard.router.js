@@ -1,37 +1,19 @@
 import express from 'express';
 import {
     getDashboardSummary,
-    getWeeklyRevenueTrend,
     getRevenueTrends,
     getTodayPatients,
-    getDoctorPerformance,
-    getAppointmentTypeAnalysis,
-    getPatientRetention
 } from '../controllers/dashboard.controller.js';
-
-import { verifyToken } from '../middleware/admin.middlware.js';
 
 const router = express.Router();
 
 // Dashboard summary for current month
-router.get('/summary', verifyToken, getDashboardSummary);
-
-// Weekly revenue trend (current week)
-router.get('/weekly-trend', verifyToken, getWeeklyRevenueTrend);
+router.get('/summary',  getDashboardSummary);
 
 // Revenue trends (yearly, monthly, weekly) with optional date range
-router.get('/revenue-trends', verifyToken, getRevenueTrends);
+router.get('/revenue-trends', getRevenueTrends);
 
 // Today's patients with optional filters
-router.get('/todayPatients', verifyToken, getTodayPatients);
-
-// Doctor performance metrics
-router.get('/doctor-performance', verifyToken, getDoctorPerformance);
-
-// Appointment type analysis
-router.get('/appointment-type-analysis', verifyToken, getAppointmentTypeAnalysis);
-
-// Patient retention metrics
-router.get('/patient-retention', verifyToken, getPatientRetention);
+router.get('/todayPatients', getTodayPatients);
 
 export default router;
