@@ -30,14 +30,14 @@ const doctorSchema = new mongoose.Schema({
     },
     speciality: {  // Added from your request
         type: String,
-        required: [true, 'Speciality is required'],
+        required: [false, 'Speciality is required'],
         minlength: [2, 'Speciality must be at least 2 characters'],
         maxlength: [50, 'Speciality must be at most 50 characters'],
         trim: true
     },
     degree: {  // Added from your request
         type: String,
-        required: [true, 'Degree is required'],
+        required: [false, 'Degree is required'],
         trim: true
     },
     experience: {
@@ -48,22 +48,22 @@ const doctorSchema = new mongoose.Schema({
     },
     clinicAddress: {  // Added from your request
         type: String,
-        required: [true, 'Clinic address is required'],
+        required: [false, 'Clinic address is required'],
         trim: true
     },
     city: {  // Added from your request
         type: String,
-        required: [true, 'City is required'],
+        required: [false, 'City is required'],
         trim: true
     },
     state: {  // Added from your request
         type: String,
-        required: [true, 'State is required'],
+        required: [false, 'State is required'],
         trim: true
     },
     pincode: {  // Added from your request
         type: String,
-        required: [true, 'Pincode is required'],
+        required: [false, 'Pincode is required'],
         match: [/^[0-9]{6}$/, 'Pincode must be 6 digits']
     },
     bio: {  // Added from your request

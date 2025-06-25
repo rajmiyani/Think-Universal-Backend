@@ -6,12 +6,12 @@ import { doctorSchema, updateDoctorSchema } from '../validations/validationSchem
 
 export const addDoctor = async (req, res) => {
     try {
-        // 📦 Multer handles body + file separately
         console.log("🧾 Body Data:", req.body);
         console.log("🖼️ File Data:", req.file);
+        const { role, id: addedById } = req.user;
 
-        if (!req.body) {
-            return res.status(400).json({ success: false, message: "Request body is missing" });
+        if (role !== "main") {
+            return res.status(403).json({ success: false, message: "Only main doctors can add sub doctors" });
         }
 
         const { error, value } = doctorSchema.validate(req.body, { abortEarly: false });
@@ -28,20 +28,21 @@ export const addDoctor = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         value.password = await bcrypt.hash(value.password, salt);
 
-        // 👇 If file is uploaded, store buffer and metadata
         if (req.file) {
-            value.img = {
-                data: req.file.buffer, // 🟢 Store buffer
+            value.avatar = {
+                data: req.file.buffer,
                 contentType: req.file.mimetype,
                 originalName: req.file.originalname
             };
         }
 
+        // value.addedBy = addedById; // Track who added this doctor
+        value.role = 'doctor'; // Ensure the added doctor is not admin
+
         const doctor = await Doctor.create(value);
         const doctorObj = doctor.toObject();
         delete doctorObj.password;
 
-        // ✅ Explicitly include _id in the response
         return res.status(201).json({
             success: true,
             message: "Doctor added successfully",
@@ -50,13 +51,11 @@ export const addDoctor = async (req, res) => {
                 ...doctorObj
             }
         });
-
     } catch (err) {
         console.error("Add Doctor Error:", err);
         return res.status(500).json({
-            success: false, message: "Server error", error: err.message, stack: err.stack
+            success: false, message: "Server error", error: err.message
         });
-
     }
 };
 

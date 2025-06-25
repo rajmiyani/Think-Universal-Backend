@@ -51,9 +51,9 @@ export const doctorSchema = Joi.object({
     password: Joi.string()
         .min(6)
         .required(),
-    addedBy: Joi.string()
-        .optional()
-        .allow(null, ''),
+    // addedBy: Joi.string()
+    //     .optional()
+    //     .allow(null, ''),
     bankDetails: Joi.object({
         accountNumber: Joi.string()
             .pattern(/^\d{9,18}$/)
@@ -81,7 +81,7 @@ export const doctorSchema = Joi.object({
     }).optional(),
 
     role: Joi.string()
-        .valid('doctor', 'admin')
+        .valid('main', 'sub')
         .default('doctor')
 });
 

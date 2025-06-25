@@ -16,7 +16,7 @@ router.post(
   '/addDoctor',
   upload.single('avatar'),
   verifyToken,
-  authorizeRoles('admin'),
+  authorizeRoles('main'),
   addDoctor
 );
 

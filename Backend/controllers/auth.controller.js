@@ -9,55 +9,39 @@ const otpStore = new Map(); // Temporary OTP memory store
 
 // 🔐 DOCTOR CREDENTIALS
 
-// const STATIC_EMAIL = "thinkuniversal@gmail.com";
+const STATIC_EMAIL = "thinkuniversal@gmail.com";
 const STATIC_PASSWORD = "Doctor@123";
 
 export const loginDoctor = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, role } = req.body;
 
         // 1. Validate input
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required" });
+        if (!email || !password || !role) {
+            return res.status(400).json({ message: "Email, password, and role are required" });
         }
 
-        // 2. Try to find the doctor using main_email or sub_email
-        let doctor = await authModel.findOne({ main_email: email });
-        console.log("Doctor",doctor);
-        
-
-        let matchedAs = null;
-
-        if (doctor) {
-            matchedAs = "main";
-            if (doctor.main_password !== password) {
-                return res.status(401).json({ message: "Invalid password for main doctor" });
-            }
-        } else {
-            doctor = await authModel.findOne({ sub_email: email });
-            if (doctor) {
-                matchedAs = "sub";
-                if (doctor.sub_password !== password) {
-                    return res.status(401).json({ message: "Invalid password for sub doctor" });
-                }
-            }
+        if (!["main", "sub"].includes(role)) {
+            return res.status(400).json({ message: "Invalid doctor role" });
         }
 
-        // 3. Not found in either
-        if (!doctor || !matchedAs) {
-            return res.status(404).json({ message: "Doctor not found" });
+        // 2. Check against static credentials
+        if (email !== STATIC_EMAIL || password !== STATIC_PASSWORD) {
+            return res.status(401).json({ message: "Invalid email or password" });
         }
 
-        // 4. Generate token
-        const token = generateToken(doctor._id, doctor.role);
+        // 3. Generate token
+        const staticDoctorId = role === "main" ? "main-doctor-id" : "sub-doctor-id";
+        const token = generateToken(staticDoctorId, role);
 
+        // 4. Send response
         return res.status(200).json({
-            message: `${matchedAs === "main" ? "Main" : "Sub"} doctor login successful`,
+            message: `${role.charAt(0).toUpperCase() + role.slice(1)} doctor login successful`,
             token,
             doctor: {
-                id: doctor._id,
+                id: staticDoctorId,
                 email,
-                role: doctor.role
+                role
             }
         });
     } catch (err) {
