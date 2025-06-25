@@ -23,7 +23,7 @@ router.get('/weekly-trend', verifyToken, getWeeklyRevenueTrend);
 router.get('/revenue-trends', verifyToken, getRevenueTrends);
 
 // Today's patients with optional filters
-router.get('/today-patients', verifyToken, getTodayPatients);
+router.get('/todayPatients', verifyToken, getTodayPatients);
 
 // Doctor performance metrics
 router.get('/doctor-performance', verifyToken, getDoctorPerformance);
