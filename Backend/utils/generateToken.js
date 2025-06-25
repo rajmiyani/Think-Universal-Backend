@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
-const generateToken = (id, role = "admin") => {
-  const payload = { id, role };
+const generateToken = (id, role, email) => {
+  const payload = { id, role, email };
   console.log("✅ Token Payload:", payload);
 
   return jwt.sign(payload, process.env.DOCTOR_LOGIN_TOKEN, {

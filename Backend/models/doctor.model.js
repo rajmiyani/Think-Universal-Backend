@@ -132,10 +132,10 @@ const doctorSchema = new mongoose.Schema({
     role: {
         type: String,
         enum: {
-            values: ['doctor', 'admin'],
-            message: 'Role must be doctor or admin'
+            values: ['Main Doctor', 'Sub Doctor'],
+            message: 'Role  must be doctor or admin'
         },
-        default: 'doctor'
+        default: 'Sub Doctor'
     }
 }, {
     timestamps: true,

@@ -22,28 +22,28 @@ export const loginDoctor = async (req, res) => {
         }
 
         if (!["main", "sub"].includes(role)) {
-            return res.status(400).json({ message: "Invalid doctor role" });
+            return res.status(400).json({ message: "Invalid role. Must be 'main' or 'sub'" });
         }
 
-        // 2. Check against static credentials
-        if (email !== STATIC_EMAIL || password !== STATIC_PASSWORD) {
-            return res.status(401).json({ message: "Invalid email or password" });
+        // 2. Fetch doctor from DB (force include password)
+        const doctor = await authModel.findOne({ email }).select('+password');
+        if (!doctor) {
+            return res.status(404).json({ message: "Doctor not found for this email" });
         }
 
-        // 3. Generate token
-        const staticDoctorId = role === "main" ? "main-doctor-id" : "sub-doctor-id";
-        const token = generateToken(staticDoctorId, role);
+        // 4. Generate token
+        const token = generateToken(doctor._id, role, doctor.email);
 
-        // 4. Send response
         return res.status(200).json({
             message: `${role.charAt(0).toUpperCase() + role.slice(1)} doctor login successful`,
             token,
             doctor: {
-                id: staticDoctorId,
-                email,
+                id: doctor._id,
+                email: doctor.email,
                 role
             }
         });
+
     } catch (err) {
         console.error("Login Error:", err);
         return res.status(500).json({

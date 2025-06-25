@@ -37,7 +37,7 @@ export const addDoctor = async (req, res) => {
         }
 
         // value.addedBy = addedById; // Track who added this doctor
-        value.role = 'doctor'; // Ensure the added doctor is not admin
+        value.role = 'Sub Doctor'; // Ensure the added doctor is not admin
 
         const doctor = await Doctor.create(value);
         const doctorObj = doctor.toObject();
@@ -61,202 +61,81 @@ export const addDoctor = async (req, res) => {
 
 export const allDoctor = async (req, res) => {
     try {
-        const data = await Doctor.find();
-        return res.status(201).json({
+        const doctors = await Doctor.find().select('-password'); // Exclude password for security
+
+        return res.status(200).json({
             success: true,
-            message: "Doctor find",
-            data
+            message: "Doctors fetched successfully",
+            data: doctors
         });
     } catch (err) {
-        console.error("Add Doctor Error:", err);
+        console.error("All Doctor Error:", err);
         return res.status(500).json({
-            success: false, message: "Server error", error: err.message, stack: err.stack
+            success: false,
+            message: "Server error",
+            error: err.message
         });
-
     }
 };
 
 
+
 export const updateDoctorProfile = async (req, res) => {
     try {
-        // 1. AUTHENTICATION & BASIC VALIDATION
+        const { id, email, role } = req.user;
 
-        // Ensure the user is authenticated and has a valid ID from the auth middleware
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({
-                success: false,
-                message: 'Unauthorized: Doctor ID missing from session or token.'
-            });
-        }
-        const doctorId = req.user.id;
-        console.log("DoctorId", doctorId);
-
-
-        // Validate doctorId format (must be a valid MongoDB ObjectId)
-        if (!mongoose.Types.ObjectId.isValid(doctorId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid doctor ID format. Please contact support.'
-            });
+        const doctor = await Doctor.findOne({ _id: id, email, role });
+        if (!doctor) {
+            return res.status(404).json({ success: false, message: "Doctor not found in database" });
         }
 
-        // 2. VALIDATE INPUT DATA
-
-        // Validate incoming data using Joi schema (abortEarly: false for all errors)
         const { error, value } = updateDoctorSchema.validate(req.body, { abortEarly: false });
         if (error) {
-            const errors = error.details.map(e => e.message);
             return res.status(400).json({
                 success: false,
-                message: 'Validation failed',
-                errors
+                message: "Validation failed",
+                errors: error.details.map(e => e.message)
             });
         }
 
-        // 3. DUPLICATE EMAIL CHECK
-
-        // If the email is being updated, ensure it is not already used by another doctor
-        if (value.email) {
-            const existing = await Doctor.findOne({ email: value.email, _id: { $ne: doctorId } });
-            if (existing) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'Email already in use by another doctor. Please use a unique email address.'
-                });
+        if (value.email && value.email !== doctor.email) {
+            const exists = await Doctor.findOne({ email: value.email, _id: { $ne: doctor._id } });
+            if (exists) {
+                return res.status(409).json({ success: false, message: "Email already in use" });
             }
         }
 
-        // If the Phone no. is being updated, ensure it is not already used by another doctor
-        if (value.phoneNo) {
-            const phoneExists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctorId } });
-            if (phoneExists) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'Phone number already in use by another doctor. Please use a unique phone number.'
-                });
+        if (value.phoneNo && value.phoneNo !== doctor.phoneNo) {
+            const exists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctor._id } });
+            if (exists) {
+                return res.status(409).json({ success: false, message: "Phone number already in use" });
             }
         }
 
-
-        // 4. FETCH CURRENT DOCTOR DATA
-
-        // Fetch the current doctor document for comparison and audit
-        const currentDoctor = await Doctor.findById(doctorId);
-        if (!currentDoctor) {
-            return res.status(404).json({
-                success: false,
-                message: 'Doctor not found. Please check your account or contact support.'
-            });
-        }
-
-        // 5. PREPARE UPDATE DATA
-
-        // Prepare the update object with only the fields provided
-        const updateData = { ...value };
-
-        // If a file is uploaded (avatar), process and store as buffer
         if (req.file) {
-            updateData.avatar = {
+            value.avatar = {
                 data: req.file.buffer,
                 contentType: req.file.mimetype
             };
         }
 
-        // 6. LOG CHANGES FOR AUDIT (OPTIONAL)
-
-        // Compare old and new values for audit logging
-        const changedFields = [];
-        Object.keys(updateData).forEach(key => {
-            if (
-                typeof updateData[key] !== 'undefined' &&
-                String(currentDoctor[key]) !== String(updateData[key])
-            ) {
-                changedFields.push({
-                    field: key,
-                    oldValue: currentDoctor[key],
-                    newValue: updateData[key]
-                });
-            }
-        });
-
-        // Optional: Store audit log (stub)
-        // await AuditLog.create({
-        //     user: doctorId,
-        //     action: 'update_profile',
-        //     changes: changedFields,
-        //     timestamp: new Date()
-        // });
-
-        // 7. UPDATE DOCTOR IN DATABASE
-
-        // Perform the update with Mongoose schema validation
         const updatedDoctor = await Doctor.findByIdAndUpdate(
-            doctorId,
-            { $set: updateData },
+            doctor._id,
+            { $set: value },
             { new: true, runValidators: true, context: 'query' }
-        ).select('-password -__v'); // Exclude sensitive fields
+        ).select("-password -__v");
 
-        // 8. POST-UPDATE LOGIC
-
-        // If the doctor was not found (should not happen if fetched above)
-        if (!updatedDoctor) {
-            return res.status(404).json({
-                success: false,
-                message: 'Doctor not found after update. Please try again.'
-            });
-        }
-
-        // Optional: Trigger notifications or hooks
-        // if (changedFields.length > 0) {
-        //     await sendProfileUpdateNotification(doctorId, changedFields);
-        // }
-
-        // 9. SUCCESS RESPONSE
-
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            message: 'Profile updated successfully.',
-            doctor: updatedDoctor,
-            changes: changedFields.length > 0 ? changedFields : undefined
+            message: "Profile updated successfully",
+            doctor: updatedDoctor
         });
-
     } catch (err) {
-        // 10. ERROR HANDLING
-
-        console.error('❌ Update Error:', err);
-
-        // Handle duplicate key error (e.g., email)
-        if (err.code === 11000 && err.keyPattern?.email) {
-            return res.status(409).json({
-                success: false,
-                message: 'Email already in use by another doctor.'
-            });
-        }
-
-        // Handle Mongoose validation errors
-        if (err.name === 'ValidationError') {
-            const errors = Object.values(err.errors).map(e => e.message);
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors
-            });
-        }
-
-        // Handle Multer file upload errors
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({
-                success: false,
-                message: `File upload error: ${err.message}`
-            });
-        }
-
-        // Handle any other errors
+        console.error("❌ Update Error:", err);
         return res.status(500).json({
             success: false,
-            message: 'Internal Server Error',
-            error: err.message,
-            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            message: "Internal server error",
+            error: err.message
         });
     }
 };
