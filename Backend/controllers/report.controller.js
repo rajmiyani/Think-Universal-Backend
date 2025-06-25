@@ -1,128 +1,73 @@
 import Report from '../models/report.model.js';
-import { createReportSchema, reportFilterSchema } from '../validations/validationSchema.js'; // Joi schema for filters
+import { reportFilterSchema } from '../validations/validationSchema.js'; // Joi schema for filters
 import { Parser } from 'json2csv';
 import fs from 'fs';
 import path from 'path';
 
 
-export const createReport = async (req, res) => {
+export const getAllReports = async (req, res) => {
     try {
-        const { error, value } = createReportSchema.validate(req.body, { abortEarly: false });
-        if (error) {
-            const errors = error.details.map(e => e.message);
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors
-            });
-        }
+        const reports = await Report.find()
+            .populate({ path: 'doctorId', select: 'firstName lastName email' })
+            .populate({ path: 'userId', select: 'firstName lastName mobile email' })
+            .populate({ path: 'appointmentId', select: 'date' })
+            .sort({ createdAt: -1 });
 
-        const {
-            firstName,
-            lastName,
-            age,
-            gender,
-            doctor,
-            patient,
-            date,
-            fees,
-            status,
-            mobile,
-            diagnosis,
-            prescriptions
-        } = value;
-
-        const patientId = req.user?.id || req.user?._id;
-        if (!patientId) {
-            return res.status(401).json({
-                success: false,
-                message: 'Unauthorized: patientId not found from token'
-            });
-        }
-
-        const reportData = {
-            firstName,
-            lastName,
-            age,
-            gender,
-            doctor,
-            patient,
-            date,
-            fees,
-            status,
-            mobile,
-            diagnosis,
-            prescriptions,
-            patientId
-        };
-
-        const report = new Report(reportData);
-        const savedReport = await report.save();
-
-        res.status(201).json({
+        return res.status(200).json({
             success: true,
-            message: "Report created successfully",
-            data: savedReport
+            data: reports,
+            message: "All reports fetched successfully."
         });
-
     } catch (err) {
-        console.error('❌ Error creating report:', err);
-
-        if (err.code === 11000) {
-            return res.status(409).json({
-                success: false,
-                message: 'Duplicate entry detected. Please check your input.'
-            });
-        }
-
-        res.status(500).json({
+        console.error('Admin Fetch Reports Error:', err);
+        return res.status(500).json({
             success: false,
-            message: "Error creating report",
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            message: "Server Error",
+            error: err.message
         });
     }
 };
 
 
-
-// GET /reports (with validation)
-export const getReports = async (req, res) => {
+export const updateReports = async (req, res) => {
     try {
-        const value = req.validatedQuery || req.query;
+        const { reportId, symptoms, allergies, currentMedications, diagnosis, treatmentPlan } = req.body;
+        const file = req.files?.attachments ? req.files.attachments[0] : null;
 
-        const { doctor, status, startDate, endDate, page = 1, limit = 10 } = value;
-
-        const query = {};
-        if (doctor) query.doctor = doctor;
-        if (status) query.status = status;
-        if (startDate || endDate) {
-            query.date = {};
-            if (startDate) query.date.$gte = new Date(startDate);
-            if (endDate) query.date.$lte = new Date(endDate);
+        if (!reportId || !symptoms || !diagnosis) {
+            return res.status(400).json({ success: false, message: 'Required fields missing.' });
         }
 
-        const skip = (page - 1) * limit;
+        const existingReport = await Report.findById(reportId);
+        if (!existingReport) {
+            return res.status(404).json({ success: false, message: "Report not found." });
+        }
 
-        const total = await Report.countDocuments(query);
-        const reports = await Report.find(query)
-            .sort({ date: -1 })
-            .skip(skip)
-            .limit(limit);
+        let fullFileName = existingReport.attachments;
+        if (file) {
+            // ⬇️ Copy your AWS S3 logic here from existing code
+            // Upload to S3, validate mimetype, get `fullFileName` URL...
+        }
 
-        return res.json({
+        const updated = await Report.findByIdAndUpdate(reportId, {
+            symptoms,
+            allergies,
+            currentMedications: JSON.parse(currentMedications),
+            diagnosis,
+            treatmentPlan,
+            attachments: fullFileName
+        }, { new: true });
+
+        return res.status(200).json({
             success: true,
-            data: reports,
-            pagination: {
-                total,
-                page,
-                pages: Math.ceil(total / limit)
-            }
+            data: updated,
+            message: "Report updated by Admin successfully."
         });
-
     } catch (err) {
+        console.error("Admin Update Report Error:", err);
         return res.status(500).json({
             success: false,
-            message: "Internal Server Error",
+            message: "Server Error",
             error: err.message
         });
     }

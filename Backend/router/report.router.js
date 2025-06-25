@@ -1,9 +1,9 @@
 import express from 'express';
 import {
-    getReports,
+    getAllReports,
+    updateReports,
     uploadReport,
     exportCSV,
-    createReport
 } from '../controllers/report.controller.js';
 import { reportFilterSchema } from '../validations/validationSchema.js';
 import validate from '../utils/validate.js';
@@ -12,11 +12,9 @@ import { verifyToken } from '../middleware/admin.middlware.js';
 
 const router = express.Router();
 
-router.post('/createReport', verifyToken, createReport)
 
-// GET /reports/getReports
-router.get('/getReports', validate(reportFilterSchema, 'query'), getReports);
-// router.get('/getReports', getReports);
+router.get('/getAllReports', verifyToken, getAllReports);
+router.patch('/updateReports/:id', verifyToken, updateReports);
 
 
 // GET /reports/export
