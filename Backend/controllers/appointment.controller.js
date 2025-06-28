@@ -28,7 +28,7 @@ const validateExportParams = (req, res, next) => {
 // Get all appointments with filters & pagination
 export const getAppointments = async (req, res) => {
     try {
-        // Validate query parameters
+        // ✅ Step 1: Validate query parameters
         const { error, value } = validateQuery(req.query);
         if (error) {
             return res.status(400).json({
@@ -40,8 +40,10 @@ export const getAppointments = async (req, res) => {
 
         const { name, doctor, status, page, limit } = value;
 
-        // Build dynamic MongoDB query
-        const query = {};
+        // ✅ Step 2: Build dynamic MongoDB query
+        const query = {
+            userId: { $exists: true }  // ✅ Only get appointments from mobile app
+        };
 
         if (name?.trim()) {
             query.name = { $regex: name.trim(), $options: "i" };
@@ -55,11 +57,9 @@ export const getAppointments = async (req, res) => {
             query.status = status;
         }
 
-        // ✅ Only include appointments booked from mobile (with userId)
-        query.userId = { $exists: true };
-
         const skip = (page - 1) * limit;
 
+        // ✅ Step 3: Query database
         const [appointments, total] = await Promise.all([
             Appointment.find(query)
                 .skip(skip)
@@ -70,11 +70,13 @@ export const getAppointments = async (req, res) => {
             Appointment.countDocuments(query),
         ]);
 
+        // ✅ Step 4: Format results with doctor name
         const updatedAppointments = appointments.map(appt => ({
             ...appt,
             doctorName: appt.doctor ? `${appt.doctor.firstName} ${appt.doctor.lastName}` : null,
         }));
 
+        // ✅ Step 5: Return JSON
         res.status(200).json({
             success: true,
             data: updatedAppointments,
