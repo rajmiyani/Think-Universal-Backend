@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const generateToken = (id, role, email) => {
+const generateToken = (id, email, role) => {
   const payload = { id, role, email };
   console.log("✅ Token Payload:", payload);
 

@@ -14,33 +14,23 @@ const STATIC_PASSWORD = "Doctor@123";
 
 export const loginDoctor = async (req, res) => {
     try {
-        const { email, password, role } = req.body;
+        const { email, password } = req.body;
 
-        if (!email || !password || !role) {
+        if (!email || !password) {
             return res.status(400).json({ message: "Email, password, and role are required" });
         }
 
-        if (!["main", "sub"].includes(role)) {
-            return res.status(400).json({ message: "Invalid role. Must be 'main' or 'sub'" });
-        }
 
-        // 🔍 Match by email and role
         const doctor = await authModel.findOne({ email }).select('+password');
         if (!doctor) {
             return res.status(404).json({ message: "Doctor not found for this role" });
         }
 
-        // ✅ Generate token with real ObjectId
-        const token = generateToken(doctor._id.toString(), role, doctor.email);
+        const token = generateToken(doctor._id.toString(), doctor.email);
 
         return res.status(200).json({
-            message: `${role.charAt(0).toUpperCase() + role.slice(1)} doctor login successful`,
             token,
-            doctor: {
-                id: doctor._id,
-                email: doctor.email,
-                role
-            }
+            doctor
         });
 
     } catch (err) {
