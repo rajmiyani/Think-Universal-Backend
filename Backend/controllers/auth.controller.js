@@ -26,7 +26,7 @@ export const loginDoctor = async (req, res) => {
             return res.status(404).json({ message: "Doctor not found for this role" });
         }
 
-        const token = generateToken(doctor._id.toString(), doctor.email);
+        const token = generateToken(doctor._id.toString(), doctor.email, doctor.role);
 
         return res.status(200).json({
             token,

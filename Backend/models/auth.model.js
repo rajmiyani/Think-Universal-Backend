@@ -46,9 +46,8 @@ const authSchema = new mongoose.Schema({
         required: true
     },
     createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Auth',
-        default: null
+        type: String,
+        default: 'Urvesh Chauhan'
     }
 }, { timestamps: true });
 

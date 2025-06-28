@@ -15,16 +15,17 @@ const router = express.Router();
 router.post(
   '/addDoctor',
   upload.single('avatar'),
-  verifyToken,
-  authorizeRoles('main'),
+  // verifyToken,
+  // authorizeRoles('main'),
   addDoctor
 );
 
 router.get('/allDoctor', allDoctor);
 
 router.put(
-  '/updateProfile',
+  '/updateProfile/:id',
   verifyToken,
+  authorizeRoles('main', 'sub'),
   upload.single('avatar'),
   updateDoctorProfile
 );

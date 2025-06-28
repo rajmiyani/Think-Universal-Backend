@@ -1,108 +1,76 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 const doctorSchema = new mongoose.Schema({
     firstName: {
         type: String,
-        required: [false, 'First name is required'],
         minlength: [2, 'First name must be at least 2 characters'],
         maxlength: [15, 'First name must be at most 15 characters'],
         trim: true
     },
     lastName: {
         type: String,
-        required: [false, 'Last name is required'],
         minlength: [2, 'Last name must be at least 2 characters'],
         maxlength: [15, 'Last name must be at most 15 characters'],
         trim: true
     },
     email: {
         type: String,
-        required: [false, 'Email is required'],
+        required: true,
         unique: true,
         trim: true,
         lowercase: true,
-        match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email address']
+        match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Invalid email']
     },
     phoneNo: {
-        type: String, // Changed to String for international support
-        required: [false, 'Phone number is required'],
+        type: String,
         match: [/^[0-9]{10,15}$/, 'Phone number must be 10-15 digits']
     },
-    speciality: {  // Added from your request
-        type: String,
-        required: [false, 'Speciality is required'],
-        minlength: [2, 'Speciality must be at least 2 characters'],
-        maxlength: [50, 'Speciality must be at most 50 characters'],
-        trim: true
-    },
-    degree: {  // Added from your request
-        type: String,
-        required: [false, 'Degree is required'],
-        trim: true
-    },
+    speciality: String,
+    degree: String,
     experience: {
         type: String,
-        min: [0, 'Experience cannot be negative'],
-        max: [80, 'Experience cannot exceed 80 years'],
-        required: [true, 'Experience is required']
+        required: true
     },
-    clinicAddress: {  // Added from your request
+    clinicAddress: String,
+    city: String,
+    state: String,
+    pincode: {
         type: String,
-        required: [false, 'Clinic address is required'],
-        trim: true
-    },
-    city: {  // Added from your request
-        type: String,
-        required: [false, 'City is required'],
-        trim: true
-    },
-    state: {  // Added from your request
-        type: String,
-        required: [false, 'State is required'],
-        trim: true
-    },
-    pincode: {  // Added from your request
-        type: String,
-        required: [false, 'Pincode is required'],
         match: [/^[0-9]{6}$/, 'Pincode must be 6 digits']
     },
-    bio: {  // Added from your request
+    bio: {
         type: String,
-        maxlength: [2000, 'Bio cannot exceed 2000 characters'],
-        trim: true
+        maxlength: 2000
     },
-    avatar: {  // Added from your request (replaces img)
+    avatar: {
         data: Buffer,
         contentType: String
     },
     totalPatient: {
         type: Number,
-        min: [0, 'Patient count cannot be negative'],
         default: 0
     },
     rating: {
         type: Number,
-        min: [0, 'Rating cannot be negative'],
-        max: [5, 'Rating cannot exceed 5'],
+        min: 0,
+        max: 5,
         default: 0
     },
     gender: {
         type: String,
-        enum: {
-            values: ['Male', 'Female', 'Other'],
-            message: 'Gender must be Male, Female, or Other'
-        },
-        required: [true, 'Gender is required']
+        enum: ['Male', 'Female', 'Other'],
+        required: true
     },
     about: {
         type: String,
-        maxlength: [2000, 'About section cannot exceed 2000 characters'],
-        trim: true
+        maxlength: 2000
     },
     password: {
         type: String,
-        required: [true, 'Password is required'],
-        minlength: [8, 'Password must be at least 8 characters'] // Increased security
+        required: true,
+        minlength: 8,
+        select: false
     },
     addedBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -116,33 +84,25 @@ const doctorSchema = new mongoose.Schema({
         },
         ifscCode: {
             type: String,
-            match: [/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code format']
+            match: [/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code']
         },
-        bankName: {
-            type: String,
-            trim: true,
-            minlength: [2, 'Bank name must be at least 2 characters'],
-            maxlength: [100, 'Bank name must be at most 100 characters']
-        },
+        bankName: String,
         upiId: {
             type: String,
-            match: [/^[\w.-]+@[\w.-]+$/, 'Invalid UPI ID format']
+            match: [/^[\w.-]+@[\w.-]+$/, 'Invalid UPI ID']
         }
     },
     role: {
         type: String,
-        enum: {
-            values: ['Main Doctor', 'Sub Doctor'],
-            message: 'Role  must be doctor or admin'
-        },
-        default: 'Sub Doctor'
+        enum: ['main', 'sub'],
+        default: 'sub'
     }
 }, {
     timestamps: true,
     toJSON: {
         virtuals: true,
         transform: function (doc, ret) {
-            delete ret.password;  // Never send password in responses
+            delete ret.password;
             delete ret.__v;
             return ret;
         }
@@ -150,8 +110,18 @@ const doctorSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// Compound index for faster queries
+// 🔐 Auto-hash password before save
+doctorSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) return next();
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        return next();
+    } catch (err) {
+        return next(err);
+    }
+});
+
 doctorSchema.index({ email: 1 }, { unique: true });
-doctorSchema.index({ speciality: 1, city: 1, state: 1 });
 
 export default mongoose.model('Doctor', doctorSchema);
