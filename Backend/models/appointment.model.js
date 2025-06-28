@@ -1,72 +1,92 @@
-import mongoose from 'mongoose';
-
-const appointmentSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Patient name is required'],
-    minlength: [2, 'Name must be at least 2 characters'],
-    maxlength: [50, 'Name cannot exceed 50 characters'],
-    trim: true
-  },
-  date: {
-    type: Date,
-    required: [true, 'Appointment date is required'],
-    validate: {
-      validator: function (v) {
-        return v >= new Date().setHours(0, 0, 0, 0);
-      },
-      message: 'Appointment date cannot be in the past'
-    }
-  },
-  time: {
-    type: String,
-    required: [true, 'Appointment time is required'],
-    match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (use HH:MM)']
-  },
-  age: {
-    type: Number,
-    required: [true, 'Patient age is required'],
-    min: [0, 'Age cannot be negative'],
-    max: [120, 'Age cannot exceed 120']
-  },
-  doctor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
-    required: [true, 'Doctor reference is required'],
-    validate: {
-      validator: function (v) {
-        return mongoose.Types.ObjectId.isValid(v);
-      },
-      message: 'Invalid doctor ID format'
-    }
-  },
-  meetingMode: {
-    type: String,
-    enum: {
-      values: ['Online', 'Offline'],
-      message: 'Invalid meeting mode. Choose Online or Offline'
+import mongoose from "mongoose";
+const appointmentSchema = new mongoose.Schema(
+    {
+        doctorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Doctor",  // Corrected the typo from "Dcotor" to "Doctor"
+            require: true
+        },
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Users",
+            require: true
+        },
+        date: {
+            type: String,
+            require: true
+        },
+        timeSlot: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "DoctorAvailability",
+            require: true
+        },
+        modeId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Mode",
+            require: true
+        },
+        price: {
+            type: Number,
+            require: true
+        },
+        name: {
+            type: String,
+            require: true
+        },
+        ageRange: {
+            type: String,
+            require: true
+        },
+        contactNumber: {
+            type: String,
+            require: true
+        },
+        gender: {
+            type: String,
+            require: true
+        },
+        problem: {
+            type: String,
+            require: true
+        },
+        paymentMode: {
+            type: String,
+        },
+        paymentStatus: {
+            type: String,
+            enum: ['Done', 'Pending','Success']
+        },
+        status: {
+            type: String,
+            enum: ['Upcoming', 'Completed', 'Cancel']
+        },
+        prescription: {
+            type: String
+        },
+        prescriptionDate: {
+            type: String
+        },
+        isOther: {
+            type: Boolean
+        },
+        reason: {
+            type: String
+        },
+        rescheduleReason: {
+            type: String
+        },
+        paymentLink: {
+            type: String,
+	        default: ""
+        },
+        paymentId: {
+            type: String,
+	        default: ""
+        }
     },
-    required: [true, 'Meeting mode is required']
-  },
-  paymentMethod: {
-    type: String,
-    enum: {
-      values: ['Cash', 'Card', 'UPI'],
-      message: 'Invalid payment method. Choose Cash, Card, or UPI'
-    },
-    required: [true, 'Payment method is required']
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'confirmed', 'cancelled'],
-    default: 'pending'
-  }
-}, {
-  timestamps: true,
-  toJSON: { virtuals: true, versionKey: false },
-  toObject: { virtuals: true, versionKey: false }
-});
+    {
+        timestamps: true,
+    }
+);
 
-appointmentSchema.index({ date: 1, doctor: 1 });
-
-export default mongoose.model('Appointment', appointmentSchema);
+export default mongoose.model ("Appointment", appointmentSchema);
