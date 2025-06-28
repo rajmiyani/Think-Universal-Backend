@@ -1,10 +1,12 @@
 import Report from '../models/report.model.js';
+import User from '../models/user.model.js';
 import { reportFilterSchema } from '../validations/validationSchema.js'; // Joi schema for filters
 import { Parser } from 'json2csv';
 import fs from 'fs';
 import path from 'path';
 
 
+// Get all reports with populated data
 export const getAllReports = async (req, res) => {
     try {
         const reports = await Report.find()
@@ -15,8 +17,8 @@ export const getAllReports = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: reports,
-            message: "All reports fetched successfully."
+            message: "All reports fetched successfully.",
+            data: reports
         });
     } catch (err) {
         console.error('Admin Fetch Reports Error:', err);
@@ -31,40 +33,34 @@ export const getAllReports = async (req, res) => {
 export const getReportByMobile = async (req, res) => {
     try {
         const mobile = req.params.mobile;
-
         if (!mobile || !/^\d{10}$/.test(mobile)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid or missing mobile number'
-            });
+            return res.status(400).json({ success: false, message: 'Invalid or missing mobile number' });
         }
 
-        const reports = await Report.find({ mobile }).sort({ date: -1 });
+        console.log("🔎 Searching user with phone_number:", mobile);
+        const user = await User.findOne({ phone_number: mobile }).select('_id');
+        console.log("📋 User result:", user);
 
-        if (!reports.length) {
-            return res.status(404).json({
-                success: false,
-                message: 'No reports found for this mobile number'
-            });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found for given mobile number' });
         }
 
-        return res.status(200).json({
-            success: true,
-            message: 'Reports fetched successfully',
-            data: reports
-        });
+        const reports = await Report.find({ userId: user._id })
+            .populate('doctorId', 'firstName lastName email')
+            .populate('appointmentId', 'date')
+            .sort({ createdAt: -1 });
 
+        if (reports.length === 0) {
+            return res.status(404).json({ success: false, message: 'No reports found for this user' });
+        }
+
+        return res.status(200).json({ success: true, message: 'Reports fetched successfully', data: reports });
     } catch (err) {
-        console.error("❌ Error in getReportByMobile:", err);
-        return res.status(500).json({
-            success: false,
-            message: 'Server error',
-            error: err.message
-        });
+        return res.status(500).json({ success: false, message: 'Server error', error: err.message });
     }
 };
 
-export const updateReports = async (req, res) => {
+export const updateReport = async (req, res) => {
     try {
         const { reportId, symptoms, allergies, currentMedications, diagnosis, treatmentPlan } = req.body;
         const file = req.files?.attachments ? req.files.attachments[0] : null;
@@ -78,10 +74,14 @@ export const updateReports = async (req, res) => {
             return res.status(404).json({ success: false, message: "Report not found." });
         }
 
-        let fullFileName = existingReport.attachments;
+        let fileUrl = existingReport.attachments;
         if (file) {
-            // ⬇️ Copy your AWS S3 logic here from existing code
-            // Upload to S3, validate mimetype, get `fullFileName` URL...
+            // Save file to local `/uploads/` folder (or wherever your multer is configured)
+            const filename = `admin-${Date.now()}-${file.originalname}`;
+            const localPath = path.join('uploads', filename);
+            fs.renameSync(file.path, localPath); // move to uploads
+
+            fileUrl = `/uploads/${filename}`; // store path to DB
         }
 
         const updated = await Report.findByIdAndUpdate(reportId, {
@@ -90,13 +90,13 @@ export const updateReports = async (req, res) => {
             currentMedications: JSON.parse(currentMedications),
             diagnosis,
             treatmentPlan,
-            attachments: fullFileName
+            attachments: fileUrl
         }, { new: true });
 
         return res.status(200).json({
             success: true,
-            data: updated,
-            message: "Report updated by Admin successfully."
+            message: "Report updated by Admin successfully.",
+            data: updated
         });
     } catch (err) {
         console.error("Admin Update Report Error:", err);
@@ -107,6 +107,7 @@ export const updateReports = async (req, res) => {
         });
     }
 };
+
 
 // GET /reports/export (with validation and security)
 export const exportCSV = async (req, res) => {

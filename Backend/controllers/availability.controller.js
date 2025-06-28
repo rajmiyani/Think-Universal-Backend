@@ -91,8 +91,8 @@ export const getAvailabilityDoctor = async (req, res) => {
 
         const allSlots = await Availability.find({});
         const today = dayjs();
-        const start = today.startOf('month');
-        const end = today.endOf('month');
+        const monthStart = today.startOf('month');
+        const monthEnd = today.endOf('month');
 
         let events = [];
 
@@ -101,7 +101,6 @@ export const getAvailabilityDoctor = async (req, res) => {
             if (!doctor) continue;
 
             const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
-
             const modeList = Object.entries(slot.modes || {})
                 .filter(([_, value]) => value)
                 .map(([key]) => key);
@@ -114,35 +113,47 @@ export const getAvailabilityDoctor = async (req, res) => {
                 while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
                     const repeatedDate = current.date(originalDay);
 
-                    if (repeatedDate.isBefore(start) || repeatedDate.isAfter(end)) {
+                    if (repeatedDate.isBefore(monthStart) || repeatedDate.isAfter(monthEnd)) {
                         current = current.add(1, 'month');
                         continue;
                     }
 
+                    const startDateTime = dayjs(`${repeatedDate.format('YYYY-MM-DD')}T${slot.fromTime}`);
+                    const isLocked = startDateTime.diff(today, 'hour') < 24;
+
                     events.push({
                         id: `${slot._id}-${repeatedDate.format('YYYY-MM-DD')}`,
+                        doctorId: doctor._id,
+                        doctorName: doctorFullName,
                         title: `${doctorFullName}: ${slot.fromTime} - ${slot.toTime}`,
                         start: `${repeatedDate.format('YYYY-MM-DD')}T${slot.fromTime}`,
                         end: `${repeatedDate.format('YYYY-MM-DD')}T${slot.toTime}`,
                         allDay: false,
                         isMonthly: true,
-                        modes: modeList
+                        modes: modeList,
+                        isLocked
                     });
 
                     current = current.add(1, 'month');
                 }
             } else {
                 const slotDate = dayjs(slot.date);
-                if (slotDate.isBefore(start) || slotDate.isAfter(end)) continue;
+                if (slotDate.isBefore(monthStart) || slotDate.isAfter(monthEnd)) continue;
+
+                const startDateTime = dayjs(`${slotDate.format('YYYY-MM-DD')}T${slot.fromTime}`);
+                const isLocked = startDateTime.diff(today, 'hour') < 24;
 
                 events.push({
                     id: slot._id.toString(),
+                    doctorId: doctor._id,
+                    doctorName: doctorFullName,
                     title: `${doctorFullName}: ${slot.fromTime} - ${slot.toTime}`,
                     start: `${slotDate.format('YYYY-MM-DD')}T${slot.fromTime}`,
                     end: `${slotDate.format('YYYY-MM-DD')}T${slot.toTime}`,
                     allDay: false,
                     isMonthly: false,
-                    modes: modeList
+                    modes: modeList,
+                    isLocked
                 });
             }
         }
@@ -151,8 +162,13 @@ export const getAvailabilityDoctor = async (req, res) => {
             success: true,
             events
         });
+
     } catch (err) {
-        console.error('❌ getAllDoctorsAvailability Error:', err);
-        return res.status(500).json({ success: false, message: 'Server error', error: err.message });
+        console.error('❌ getAvailabilityDoctor Error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: err.message
+        });
     }
 };

@@ -2,7 +2,7 @@ import express from 'express';
 import {
     getAllReports,
     getReportByMobile,
-    updateReports,
+    updateReport,
     uploadReport,
     exportCSV,
 } from '../controllers/report.controller.js';
@@ -14,9 +14,9 @@ import { verifyToken } from '../middleware/admin.middlware.js';
 const router = express.Router();
 
 
-router.get('/getAllReports', verifyToken, getAllReports);
-router.patch('/updateReports/:id', verifyToken, updateReports);
-router.get('/getReport/:mobile', verifyToken, getReportByMobile);
+router.get('/getAllReports', getAllReports);
+router.patch('/updateReports/:id', updateReport);
+router.get('/getReport/:mobile', getReportByMobile);
 
 
 // GET /reports/export
