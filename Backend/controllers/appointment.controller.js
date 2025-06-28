@@ -42,30 +42,34 @@ export const getAppointments = async (req, res) => {
 
         // Build dynamic MongoDB query
         const query = {};
+
         if (name?.trim()) {
             query.name = { $regex: name.trim(), $options: "i" };
         }
+
         if (doctor) {
             query.doctor = doctor;
         }
+
         if (status !== "all") {
             query.status = status;
         }
 
+        // ✅ Only include appointments booked from mobile (with userId)
+        query.userId = { $exists: true };
+
         const skip = (page - 1) * limit;
 
-        // Fetch appointments with doctor name populated
         const [appointments, total] = await Promise.all([
             Appointment.find(query)
                 .skip(skip)
                 .limit(limit)
                 .sort({ date: 1 })
-                .populate('doctor', 'firstName lastName') // 👈 Populate only name fields
+                .populate('doctor', 'firstName lastName')
                 .lean(),
             Appointment.countDocuments(query),
         ]);
 
-        // Append doctorName to each appointment
         const updatedAppointments = appointments.map(appt => ({
             ...appt,
             doctorName: appt.doctor ? `${appt.doctor.firstName} ${appt.doctor.lastName}` : null,
@@ -89,18 +93,8 @@ export const getAppointments = async (req, res) => {
     }
 };
 
-// View single appointment
-// export const getAppointmentsByDoctor = async (req, res) => {
-//     try {
-//         const appointment = await Appointment.findById(req.params.doctorId);
-//         if (!appointment) return res.status(404).json({ message: "Not found" });
-//         res.status(200).json(appointment);
-//     } catch (error) {
-//         res.status(500).json({ message: "Failed to fetch", error: error.message });
-//     }
-// };
 
-// Create new appointment (with validation)
+// Create new appointment
 
 export const createAppointment = [
     sanitizeInput,
@@ -128,42 +122,6 @@ export const createAppointment = [
         }
     }
 ];
-
-// Update appointment (with validation)
-// export const updateAppointment = [
-//     sanitizeInput,
-//     async (req, res) => {
-//         try {
-//             const { error, value } = appointmentSchema.validate(req.body);
-//             if (error) return res.status(400).json({ message: error.details[0].message });
-
-//             const updated = await Appointment.findByIdAndUpdate(
-//                 req.params.id,
-//                 value,
-//                 { new: true, runValidators: true }
-//             ).lean();
-
-//             if (!updated) return res.status(404).json({ message: "Appointment not found" });
-//             delete updated.__v;
-
-//             res.status(200).json(updated);
-//         } catch (error) {
-//             res.status(400).json({ message: "Update failed", error: error.message });
-//         }
-//     }
-// ];
-
-// Delete appointment (with authorization check)
-// export const deleteAppointment = async (req, res) => {
-//     try {
-//         const deleted = await Appointment.findByIdAndDelete(req.params.id);
-//         if (!deleted) return res.status(404).json({ message: "Appointment not found" });
-//         res.status(200).json({ message: "Deleted" });
-//     } catch (error) {
-//         res.status(400).json({ message: "Failed to delete" });
-//     }
-// };
-
 
 // Secure exports with rate limiting in production
 export const exportCSV = [
