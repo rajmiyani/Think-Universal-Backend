@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { adminDB } from '../config/mongoose.js';
 
 const modeSchema = new mongoose.Schema({
     name: {
@@ -39,4 +40,4 @@ const modeSchema = new mongoose.Schema({
 // Index for fast lookups
 modeSchema.index({ name: 1, currency: 1 }, { unique: true });
 
-export default mongoose.model('Mode', modeSchema);
+export default adminDB.model('Mode', modeSchema);
