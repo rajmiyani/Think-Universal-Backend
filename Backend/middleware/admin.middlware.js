@@ -11,14 +11,14 @@ export const verifyToken = async (req, res, next) => {
         const token = authHeader.split(" ")[1];
         const decoded = jwt.verify(token, process.env.DOCTOR_LOGIN_TOKEN);
 
-        if (!decoded?.id || !decoded?.role || !decoded?.email) {
+        if (!decoded?.id || !decoded?.email) {
             return res.status(401).json({ message: "Token is invalid: Missing id or role" });
         }
 
         req.user = {
             id: typeof decoded.id === 'string' ? decoded.id : decoded.id.toString(),
-            role: decoded.role,
-            email: decoded.email, // ✅ add this
+            // role: decoded.role,
+            email: decoded.email, 
         };
 
         next();

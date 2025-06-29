@@ -91,34 +91,30 @@ export const allDoctor = async (req, res) => {
 };
 
 
-
 export const updateDoctorProfile = async (req, res) => {
     try {
-        const { id: requesterId, role: requesterRole } = req.user;
-        const doctorId = req.params.id || requesterId;
+        const { id: requesterId } = req.user;
+        console.log(req.user);
+        
 
-        // 🔍 Find the doctor to update
-        const doctor = await Doctor.findById(doctorId);
+        // ✅ Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(requesterId)) {
+            return res.status(400).json({ success: false, message: "Invalid doctor ID" });
+        }
+
+        // 🔍 Fetch doctor by ID from token
+        const doctor = await Doctor.findById(requesterId);
         if (!doctor) {
             return res.status(404).json({ success: false, message: "Doctor not found" });
         }
 
-        // 🛡 Access control logic
-        const isSelf = doctor._id.toString() === requesterId;
-        const isAddedBy = doctor.addedBy?.toString() === requesterId;
-        const isMain = requesterRole === "main";
-
-        if (!isSelf && !(isMain && isAddedBy)) {
-            return res.status(403).json({ success: false, message: "Access denied. You are not authorized to update this profile." });
-        }
-
-        // ✅ Parse request body (bankDetails from form-data)
+        // ✅ Parse form data if bankDetails is stringified
         const parsedBody = { ...req.body };
         if (parsedBody.bankDetails && typeof parsedBody.bankDetails === "string") {
             parsedBody.bankDetails = JSON.parse(parsedBody.bankDetails);
         }
 
-        // ✅ Validate using Joi
+        // ✅ Validate fields using Joi
         const { error, value } = updateDoctorSchema.validate(parsedBody, { abortEarly: false });
         if (error) {
             return res.status(400).json({
@@ -128,18 +124,23 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
-        // 🛡 Email & Phone duplication checks
+        // 🔁 Email check (if updated)
         if (value.email && value.email !== doctor.email) {
-            const exists = await Doctor.findOne({ email: value.email, _id: { $ne: doctor._id } });
-            if (exists) return res.status(409).json({ success: false, message: "Email already in use" });
+            const emailExists = await Doctor.findOne({ email: value.email, _id: { $ne: doctor._id } });
+            if (emailExists) {
+                return res.status(409).json({ success: false, message: "Email already in use" });
+            }
         }
 
+        // 🔁 Phone check (if updated)
         if (value.phoneNo && value.phoneNo !== doctor.phoneNo) {
-            const exists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctor._id } });
-            if (exists) return res.status(409).json({ success: false, message: "Phone number already in use" });
+            const phoneExists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctor._id } });
+            if (phoneExists) {
+                return res.status(409).json({ success: false, message: "Phone number already in use" });
+            }
         }
 
-        // 🖼 Handle avatar image upload
+        // 🖼 Handle avatar update if provided
         if (req.file) {
             value.avatar = {
                 data: req.file.buffer,
@@ -147,12 +148,12 @@ export const updateDoctorProfile = async (req, res) => {
             };
         }
 
-        // 🔁 Update doctor document
+        // ✅ Perform the update
         const updatedDoctor = await Doctor.findByIdAndUpdate(
-            doctor._id,
+            requesterId,
             { $set: value },
             { new: true, runValidators: true, context: 'query' }
-        ).select("-password -__v");
+        ).select('-password -__v');
 
         return res.status(200).json({
             success: true,

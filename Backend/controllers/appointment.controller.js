@@ -1,6 +1,7 @@
-import Appointment from "../models/appointment.model.js";
+import Appointment from '../models/mobileApp/appointment.js';
 import mongoose from "mongoose";
 import { appointmentSchema, validateQuery } from '../validations/validationSchema.js'
+import doctorModel from '../models/doctor.model.js';
 
 // Middleware for input sanitization
 const sanitizeInput = (req, res, next) => {
@@ -28,72 +29,46 @@ const validateExportParams = (req, res, next) => {
 // Get all appointments with filters & pagination
 export const getAppointments = async (req, res) => {
     try {
-        // ✅ Step 1: Validate query parameters
-        const { error, value } = validateQuery(req.query);
-        if (error) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: error.details[0].message,
-            });
-        }
+        const query = { userId: { $ne: null } };
 
-        const { name, doctor, status, page, limit } = value;
+        const appointments = await Appointment.find(query).lean();
 
-        // ✅ Step 2: Build dynamic MongoDB query
-        const query = {
-            userId: { $exists: true }  // ✅ Only get appointments from mobile app
-        };
+        // Get unique doctorIds
+        const doctorIds = [...new Set(appointments.map(a => a.doctorId?.toString()))];
 
-        if (name?.trim()) {
-            query.name = { $regex: name.trim(), $options: "i" };
-        }
+        // Fetch doctor info from Admin DB
+        const doctors = await doctorModel.find({ _id: { $in: doctorIds } })
+            .select('firstName lastName')
+            .lean();
 
-        if (doctor) {
-            query.doctor = doctor;
-        }
+        const doctorMap = {};
+        doctors.forEach(doc => {
+            doctorMap[doc._id.toString()] = `${doc.firstName} ${doc.lastName}`;
+        });
 
-        if (status !== "all") {
-            query.status = status;
-        }
-
-        const skip = (page - 1) * limit;
-
-        // ✅ Step 3: Query database
-        const [appointments, total] = await Promise.all([
-            Appointment.find(query)
-                .skip(skip)
-                .limit(limit)
-                .sort({ date: 1 })
-                .populate('doctor', 'firstName lastName')
-                .lean(),
-            Appointment.countDocuments(query),
-        ]);
-
-        // ✅ Step 4: Format results with doctor name
         const updatedAppointments = appointments.map(appt => ({
             ...appt,
-            doctorName: appt.doctor ? `${appt.doctor.firstName} ${appt.doctor.lastName}` : null,
+            doctorName: doctorMap[appt.doctorId?.toString()] || 'Unknown Doctor',
         }));
 
-        // ✅ Step 5: Return JSON
         res.status(200).json({
             success: true,
             data: updatedAppointments,
-            totalPages: Math.ceil(total / limit),
-            currentPage: page,
-            totalRecords: total,
-            pageSize: limit,
+            totalRecords: updatedAppointments.length
         });
     } catch (err) {
-        console.error("Appointment fetch error:", err);
+        console.error('❌ Appointment fetch error:', err);
         res.status(500).json({
             success: false,
-            message: "Failed to fetch appointments",
-            error: err.message,
+            message: 'Failed to fetch appointments',
+            error: err.message
         });
     }
 };
+
+
+
+
 
 
 // Create new appointment

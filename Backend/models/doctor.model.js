@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { adminDB } from '../config/mongoose.js';
 import bcrypt from 'bcrypt';
 
 const doctorSchema = new mongoose.Schema({
@@ -124,4 +125,4 @@ doctorSchema.pre('save', async function (next) {
 
 doctorSchema.index({ email: 1 }, { unique: true });
 
-export default mongoose.model('Doctor', doctorSchema);
+export default adminDB.model('Doctor', doctorSchema);

@@ -23,9 +23,8 @@ router.post(
 router.get('/allDoctor', allDoctor);
 
 router.put(
-  '/updateProfile/:id',
+  '/updateProfile',
   verifyToken,
-  authorizeRoles('main', 'sub'),
   upload.single('avatar'),
   updateDoctorProfile
 );

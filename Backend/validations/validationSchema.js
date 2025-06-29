@@ -339,17 +339,8 @@ export const validateQuery = (query) => {
                 return value;
             }, 'ObjectId validation'),
         status: Joi.string()
-            .valid('pending', 'confirmed', 'cancelled', 'all')
+            .valid('Upcoming', 'Completed', 'Cancel', 'all')
             .default('all'),
-        page: Joi.number()
-            .integer()
-            .min(1)
-            .default(1),
-        limit: Joi.number()
-            .integer()
-            .min(1)
-            .max(100)
-            .default(5)
     });
 
     // Validate and sanitize the query, returning all errors if present

@@ -3,24 +3,34 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
+// ✅ Connect to Admin Panel DB (ThinkUniversalWeb)
+export const adminDB = mongoose.createConnection(process.env.MONGO_URI, {
+  dbName: 'ThinkUniversalWeb',
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-// Get the default connection
-const db = mongoose.connection;
+adminDB.on('connected', () => {
+  console.log('✅ Connected to Admin DB (ThinkUniversalWeb)');
+});
 
-// Handle connection errors
-db.on('error', (error) => {
-  console.error('❌ MongoDB connection error:', error);
+adminDB.on('error', (err) => {
+  console.error('❌ Admin DB connection error:', err.message);
   process.exit(1);
 });
 
-// Connection successful
-db.once('open', () => {
-  console.log('✅ MongoDB connected (event-based)');
+// ✅ Connect to Mobile App DB (newthinkuniversal)
+export const mobileDB = mongoose.createConnection(process.env.MONGO_URI, {
+  dbName: 'newthinkuniversal',
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 });
 
-export default db;
+mobileDB.on('connected', () => {
+  console.log('✅ Connected to Mobile DB (newthinkuniversal)');
+});
+
+mobileDB.on('error', (err) => {
+  console.error('❌ Mobile DB connection error:', err.message);
+  process.exit(1);
+});
