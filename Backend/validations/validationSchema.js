@@ -109,127 +109,119 @@ export const availabilitySchema = Joi.object({
                 return helpers.message('Invalid doctor ID format');
             }
             return value;
-        })
-        .messages({
-            'any.required': 'Doctor ID is required'
         }),
+
     firstName: Joi.string()
         .min(2)
         .max(15)
-        .required().
-        messages({
+        .required()
+        .messages({
             'string.empty': 'First name is required'
         }),
+
     lastName: Joi.string()
         .min(2)
         .max(15)
-        .required().messages({
+        .required()
+        .messages({
             'string.empty': 'Last name is required'
         }),
-    date: Joi.date()
+
+    isMonthly: Joi.boolean().default(false),
+
+    // Only required when isMonthly === false
+    startDate: Joi.date()
         .iso()
         .min('now')
         .when('isMonthly', {
-            is: true,
-            then: Joi.optional(),
-            otherwise: Joi.required()
+            is: false,
+            then: Joi.required()
         })
         .messages({
-            'date.base': 'Invalid date format',
-            'date.min': 'Date cannot be in the past',
-            'any.required': 'Date is required'
+            'date.base': 'Invalid start date',
+            'date.min': 'Start date cannot be in the past',
+            'any.required': 'Start date is required'
+        }),
+
+    endDate: Joi.date()
+        .iso()
+        .min(Joi.ref('startDate'))
+        .when('isMonthly', {
+            is: false,
+            then: Joi.required()
+        })
+        .messages({
+            'date.base': 'Invalid end date',
+            'date.min': 'End date must be the same or after start date',
+            'any.required': 'End date is required'
+        }),
+
+    // Only required when isMonthly === true
+    endMonth: Joi.string()
+        .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .when('isMonthly', {
+            is: true,
+            then: Joi.required()
+        })
+        .messages({
+            'string.pattern.base': 'endMonth must be in YYYY-MM format',
+            'any.required': 'endMonth is required when isMonthly is true'
         }),
 
     fromTime: Joi.string()
         .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
         .when('isMonthly', {
-            is: true,
-            then: Joi.optional(),
-            otherwise: Joi.required()
+            is: false,
+            then: Joi.required()
         })
         .messages({
-            'string.pattern.base': 'Invalid time format (HH:mm)',
-            'any.required': 'Start time is required'
+            'string.pattern.base': 'Invalid fromTime format (HH:mm)',
+            'any.required': 'fromTime is required'
         }),
 
     toTime: Joi.string()
         .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
         .when('isMonthly', {
-            is: true,
-            then: Joi.optional(),
-            otherwise: Joi.required()
+            is: false,
+            then: Joi.required()
         })
         .custom((value, helpers) => {
             const { fromTime } = helpers.state.ancestors[0];
-            // Only check if both times are present
-            if (value && fromTime && value <= fromTime) {
-                return helpers.message('End time must be after start time');
+            if (fromTime && value <= fromTime) {
+                return helpers.message('toTime must be after fromTime');
             }
             return value;
         })
         .messages({
-            'string.pattern.base': 'Invalid time format (HH:mm)',
-            'any.required': 'End time is required'
+            'string.pattern.base': 'Invalid toTime format (HH:mm)',
+            'any.required': 'toTime is required'
         }),
 
-    isMonthly: Joi.boolean()
-        .default(false),
-
-    // startMonth: Joi.string()
-    //     .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
-    //     .when('isMonthly', {
-    //         is: true,
-    //         then: Joi.required().messages({
-    //             'any.required': 'startMonth is required when isMonthly is true',
-    //             'string.pattern.base': 'startMonth must be in YYYY-MM format'
-    //         }),
-    //         otherwise: Joi.optional()
-    //     }),
-
-    endMonth: Joi.string()
-        .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
-        .when('isMonthly', {
-            is: true,
-            then: Joi.required().messages({
-                'any.required': 'endMonth is required when isMonthly is true',
-                'string.pattern.base': 'endMonth must be in YYYY-MM format'
-            }),
-            otherwise: Joi.optional()
-        }),
     modes: Joi.object({
-        audio: Joi.boolean()
-            .required()
-            .messages({
-                'any.required': 'Audio mode is required',
-                'boolean.base': 'Audio mode must be a boolean'
-            }),
-        chat: Joi.boolean()
-            .required()
-            .messages({
-                'any.required': 'Chat mode is required',
-                'boolean.base': 'Chat mode must be a boolean'
-            }),
-        videoCall: Joi.boolean()
-            .required()
-            .messages({
-                'any.required': 'Video call mode is required',
-                'boolean.base': 'Video call mode must be a boolean'
-            })
-    })
-        .required()
-        .messages({
-            'any.required': 'Modes object is required'
+        audio: Joi.boolean().required().messages({
+            'any.required': 'Audio mode is required'
+        }),
+        chat: Joi.boolean().required().messages({
+            'any.required': 'Chat mode is required'
+        }),
+        videoCall: Joi.boolean().required().messages({
+            'any.required': 'Video call mode is required'
         })
+    }).required().messages({
+        'any.required': 'Modes are required'
+    })
 })
     .custom((value, helpers) => {
-        // Only validate order if both months and isMonthly are present
-        if (value.isMonthly && value.startMonth && value.endMonth) {
-            if (value.endMonth < value.startMonth) {
-                return helpers.error('any.invalid', { message: 'endMonth must be the same as or after startMonth' });
+        if (value.isMonthly && value.endMonth) {
+            const now = new Date();
+            const [year, month] = value.endMonth.split('-').map(Number);
+            const endMonthDate = new Date(year, month - 1);
+            if (endMonthDate < now) {
+                return helpers.error('any.invalid', { message: 'endMonth must be current or future month' });
             }
         }
         return value;
-    }, 'startMonth/endMonth order validation')
+    }, 'Custom Monthly End Validation')
     .prefs({ abortEarly: false, stripUnknown: true });
 
 

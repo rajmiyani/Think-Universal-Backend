@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { adminDB } from '../config/mongoose.js';
 
 // HH:MM format
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -27,7 +28,17 @@ const availabilitySchema = new mongoose.Schema({
     maxlength: [15, 'Name must be at most 15 characters'],
     trim: true
   },
-  date: {
+  startDate: {
+    type: Date,
+    required: [true, 'Date is required'],
+    validate: {
+      validator: function (v) {
+        return v && v >= new Date(new Date().setHours(0, 0, 0, 0));
+      },
+      message: 'Date must be today or in the future'
+    }
+  },
+  endDate: {
     type: Date,
     required: [true, 'Date is required'],
     validate: {
@@ -72,20 +83,20 @@ const availabilitySchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  endMonth: {
-    type: String,
-    required: function () {
-      return this.isMonthly === true;
-    },
-    validate: [
-      {
-        validator: function (v) {
-          return /^20\d{2}-(0[1-9]|1[0-2])$/.test(v);
-        },
-        message: props => "${props.value}" // is not a valid month format(YYYY- MM)
-      }
-    ]
-  },
+  // endMonth: {
+  //   type: String,
+  //   required: function () {
+  //     return this.isMonthly === true;
+  //   },
+  //   validate: [
+  //     {
+  //       validator: function (v) {
+  //         return /^20\d{2}-(0[1-9]|1[0-2])$/.test(v);
+  //       },
+  //       message: props => "${props.value}" // is not a valid month format(YYYY- MM)
+  //     }
+  //   ]
+  // },
   modes: {
     audio: { type: Boolean, default: false },
     chat: { type: Boolean, default: false },
@@ -94,4 +105,4 @@ const availabilitySchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-export default mongoose.model('Availability', availabilitySchema);
+export default adminDB.model('Availability', availabilitySchema);

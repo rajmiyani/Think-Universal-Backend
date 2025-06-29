@@ -2,28 +2,47 @@ import Availability from '../models/availability.model.js';
 import Doctor from '../models/doctor.model.js';
 import { availabilitySchema } from '../validations/validationSchema.js';
 import dayjs from 'dayjs';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore.js'; // ⬅️ Import plugin
+dayjs.extend(isSameOrBefore); // ⬅️ Register it with dayjs
+
 
 // 📅 Create Availability
 export const setAvailability = async (req, res) => {
     try {
-        const { error, value } = availabilitySchema.validate(req.body);
-        if (error) {
+        const {
+            firstName,
+            lastName,
+            startDate,
+            endDate,
+            fromTime,
+            toTime,
+            isMonthly,
+            modes
+        } = req.body;
+
+        // ✅ Validate required fields
+        if (!startDate || !fromTime || !toTime) {
             return res.status(400).json({
                 success: false,
-                errors: error.details.map(e => e.message)
+                message: 'startDate, fromTime, and toTime are required'
             });
         }
 
-        let doctor;
+        const start = dayjs(startDate);
+        const end = dayjs(endDate || startDate); // fallback to one day
 
-        // 🧠 Check if main doctor is adding for a sub doctor
-        if (value.firstName && value.lastName && req.user.role === 'main') {
+        if (!start.isValid() || !end.isValid() || end.isBefore(start)) {
+            return res.status(400).json({ success: false, message: 'Invalid date range' });
+        }
+
+        // ✅ Identify doctor
+        let doctor;
+        if (firstName && lastName && req.user.role === 'main') {
             doctor = await Doctor.findOne({
-                firstName: new RegExp('^' + value.firstName + '$', 'i'),
-                lastName: new RegExp('^' + value.lastName + '$', 'i')
+                firstName: new RegExp(`^${firstName}$`, 'i'),
+                lastName: new RegExp(`^${lastName}$`, 'i')
             });
         } else {
-            // 👤 Sub doctor updating their own availability
             doctor = await Doctor.findById(req.user.id);
         }
 
@@ -31,46 +50,51 @@ export const setAvailability = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Doctor not found' });
         }
 
-        // ⛔ Overlap check
-        const existingSlot = await Availability.findOne({
-            doctorId: doctor._id,
-            date: value.date,
-            $or: [
-                {
-                    fromTime: { $lt: value.toTime },
-                    toTime: { $gt: value.fromTime }
-                }
-            ]
-        });
+        const insertedSlots = [];
+        const conflicts = [];
 
-        if (existingSlot) {
-            return res.status(409).json({
-                success: false,
-                message: 'Time slot overlaps with existing availability'
+        for (let d = start; d.isBefore(end) || d.isSame(end, 'day'); d = d.add(1, 'day')) {
+            const date = d.toDate();
+
+            const existing = await Availability.findOne({
+                doctorId: doctor._id,
+                startDate: date,
+                endDate: date,
+                $and: [
+                    { fromTime: { $lt: toTime } },
+                    { toTime: { $gt: fromTime } }
+                ]
             });
-        }
 
-        // ✅ Save availability
-        const newAvailability = await Availability.create({
-            doctorId: doctor._id,
-            firstName: doctor.firstName,
-            lastName: doctor.lastName,
-            date: value.date,
-            fromTime: value.fromTime,
-            toTime: value.toTime,
-            isMonthly: value.isMonthly,
-            endMonth: value.isMonthly ? value.endMonth : undefined,
-            modes: value.modes
-        });
+            if (existing) {
+                conflicts.push(d.format('YYYY-MM-DD'));
+                continue;
+            }
+
+            const newSlot = await Availability.create({
+                doctorId: doctor._id,
+                firstName: doctor.firstName,
+                lastName: doctor.lastName,
+                startDate: date,
+                endDate: date,
+                fromTime,
+                toTime,
+                isMonthly: isMonthly || false,
+                modes
+            });
+
+            insertedSlots.push(newSlot);
+        }
 
         return res.status(201).json({
             success: true,
-            message: 'Availability added successfully',
-            data: {
-                ...newAvailability.toObject(),
-                __v: undefined
-            }
+            message: '✅ Availability added successfully',
+            inserted: insertedSlots.length,
+            skipped: conflicts.length,
+            conflictDates: conflicts,
+            slots: insertedSlots
         });
+
     } catch (err) {
         console.error('❌ Availability Error:', err);
         return res.status(500).json({
@@ -81,9 +105,15 @@ export const setAvailability = async (req, res) => {
     }
 };
 
+
 // 📆 Get Calendar Availability
 export const getAvailabilityDoctor = async (req, res) => {
     try {
+        // ✅ Optional custom date range
+        const { startDate, endDate } = req.query;
+        const start = dayjs(startDate).isValid() ? dayjs(startDate).startOf('day') : dayjs().startOf('month');
+        const end = dayjs(endDate).isValid() ? dayjs(endDate).endOf('day') : dayjs().endOf('month');
+
         const doctors = await Doctor.find({});
         if (!doctors.length) {
             return res.status(404).json({ success: false, message: 'No doctors found' });
@@ -91,8 +121,6 @@ export const getAvailabilityDoctor = async (req, res) => {
 
         const allSlots = await Availability.find({});
         const today = dayjs();
-        const monthStart = today.startOf('month');
-        const monthEnd = today.endOf('month');
 
         let events = [];
 
@@ -113,7 +141,7 @@ export const getAvailabilityDoctor = async (req, res) => {
                 while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
                     const repeatedDate = current.date(originalDay);
 
-                    if (repeatedDate.isBefore(monthStart) || repeatedDate.isAfter(monthEnd)) {
+                    if (repeatedDate.isBefore(start) || repeatedDate.isAfter(end)) {
                         current = current.add(1, 'month');
                         continue;
                     }
@@ -138,7 +166,7 @@ export const getAvailabilityDoctor = async (req, res) => {
                 }
             } else {
                 const slotDate = dayjs(slot.date);
-                if (slotDate.isBefore(monthStart) || slotDate.isAfter(monthEnd)) continue;
+                if (slotDate.isBefore(start) || slotDate.isAfter(end)) continue;
 
                 const startDateTime = dayjs(`${slotDate.format('YYYY-MM-DD')}T${slot.fromTime}`);
                 const isLocked = startDateTime.diff(today, 'hour') < 24;
