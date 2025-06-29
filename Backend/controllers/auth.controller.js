@@ -1,9 +1,8 @@
 import bcrypt from 'bcryptjs';
 import authModel from '../models/auth.model.js';
 import generateToken from '../utils/generateToken.js';
-import axios from 'axios';
-import { loginSchema } from '../validations/validationSchema.js'
 import sendOTPEmail from '../utils/sendOTP.js';
+import doctorModel from '../models/doctor.model.js';
 const otpStore = new Map(); // Temporary OTP memory store
 
 
@@ -21,7 +20,7 @@ export const loginDoctor = async (req, res) => {
         }
 
 
-        const doctor = await authModel.findOne({ email }).select('+password');
+        const doctor = await doctorModel.findOne({ email }).select('+password');
         if (!doctor) {
             return res.status(404).json({ message: "Doctor not found for this role" });
         }
