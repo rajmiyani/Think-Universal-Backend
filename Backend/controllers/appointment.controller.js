@@ -1,17 +1,9 @@
 import Appointment from '../models/mobileApp/appointment.js';
 import mongoose from "mongoose";
-import { appointmentSchema, validateQuery } from '../validations/validationSchema.js'
 import doctorModel from '../models/doctor.model.js';
-
-// Middleware for input sanitization
-const sanitizeInput = (req, res, next) => {
-    if (req.body) {
-        Object.entries(req.body).forEach(([key, value]) => {
-            if (typeof value === 'string') req.body[key] = value.trim();
-        });
-    }
-    next();
-};
+import { appointmentSchema, validateQuery } from '../validations/validationSchema.js'
+import MobileAppointment from '../models/mobileApp/appointment.js';
+import AdminAppointment from '../models/appointment.model.js';
 
 // Add this function before you use it in exportCSV
 const validateExportParams = (req, res, next) => {
@@ -25,80 +17,57 @@ const validateExportParams = (req, res, next) => {
     next();
 };
 
-
-// Get all appointments with filters & pagination
 export const getAppointments = async (req, res) => {
     try {
-        const query = { userId: { $ne: null } };
+        const appointments = await MobileAppointment.find().lean();
 
-        const appointments = await Appointment.find(query).lean();
+        let inserted = 0;
+        let skipped = 0;
+        const synced = [];
 
-        // Get unique doctorIds
-        const doctorIds = [...new Set(appointments.map(a => a.doctorId?.toString()))];
+        for (const appt of appointments) {
+            const exists = await AdminAppointment.findOne({
+                _id: appt._id // or match by userId + doctorId + date + timeSlot
+            });
 
-        // Fetch doctor info from Admin DB
-        const doctors = await doctorModel.find({ _id: { $in: doctorIds } })
-            .select('firstName lastName')
-            .lean();
+            if (exists) {
+                skipped++;
+                continue;
+            }
 
-        const doctorMap = {};
-        doctors.forEach(doc => {
-            doctorMap[doc._id.toString()] = `${doc.firstName} ${doc.lastName}`;
-        });
+            try {
+                const newAppt = await AdminAppointment.create({
+                    ...appt,
+                    _id: undefined // let MongoDB generate a new _id
+                });
 
-        const updatedAppointments = appointments.map(appt => ({
-            ...appt,
-            doctorName: doctorMap[appt.doctorId?.toString()] || 'Unknown Doctor',
-        }));
+                inserted++;
+                synced.push(newAppt);
+            } catch (err) {
+                console.warn(`❌ Failed to insert appointment ${appt._id}:`, err.message);
+                skipped++;
+            }
+        }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            data: updatedAppointments,
-            totalRecords: updatedAppointments.length
+            message: '✅ Appointment sync completed',
+            inserted,
+            skipped,
+            totalFetched: appointments.length,
+            appointments: synced
         });
+
     } catch (err) {
-        console.error('❌ Appointment fetch error:', err);
-        res.status(500).json({
+        console.error('❌ Sync error:', err);
+        return res.status(500).json({
             success: false,
-            message: 'Failed to fetch appointments',
+            message: 'Sync failed',
             error: err.message
         });
     }
 };
 
-
-
-
-
-
-// Create new appointment
-
-export const createAppointment = [
-    sanitizeInput,
-    async (req, res) => {
-        try {
-            const { error, value } = appointmentSchema.validate(req.body);
-            if (error) return res.status(400).json({ message: error.details[0].message });
-
-            // Verify doctor exists
-            const doctor = await mongoose.model('Doctor').findById(value.doctor).select('firstName lastName');
-            if (!doctor) return res.status(400).json({ message: "Doctor not found" });
-
-            const appointment = new Appointment(value);
-            const saved = await appointment.save();
-
-            const result = saved.toObject();
-            delete result.__v;
-
-            // Add doctor name to result
-            result.doctorName = `${doctor.firstName} ${doctor.lastName}`;
-
-            res.status(201).json(result);
-        } catch (error) {
-            res.status(400).json({ message: "Invalid data", error: error.message });
-        }
-    }
-];
 
 // Secure exports with rate limiting in production
 export const exportCSV = [

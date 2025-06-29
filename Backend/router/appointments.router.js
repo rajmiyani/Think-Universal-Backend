@@ -2,7 +2,7 @@ import express from 'express';
 import {
   getAppointments,
   // getAppointmentsByDoctor,
-  createAppointment,
+  // createAppointment,
   // updateAppointment,
   // deleteAppointment,
   exportCSV,
@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.get("/getAppointments", getAppointments); // For admin panel
 // router.get("/doctor/:doctorId", verifyToken, authorizeRoles('doctor', 'admin'), getAppointmentsByDoctor);
-router.post('/createAppointment', verifyToken, authorizeRoles('patient', 'admin'), createAppointment);
+// router.post('/createAppointment', verifyToken, authorizeRoles('patient', 'admin'), createAppointment);
 // router.put('/updateAppointment/:id', verifyToken, authorizeRoles('admin', 'doctor'), updateAppointment);
 // router.delete('/deleteAppointment/:id', verifyToken, authorizeRoles('admin'), deleteAppointment);
 router.get("/export/csv", exportCSV);
