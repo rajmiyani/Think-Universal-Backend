@@ -1,208 +1,155 @@
-import Report from '../models/report.model.js';
-import User from '../models/user.model.js';
-import { reportFilterSchema } from '../validations/validationSchema.js'; // Joi schema for filters
-import { Parser } from 'json2csv';
-import fs from 'fs';
-import path from 'path';
+import Report from "../models/report.model.js";
+import path from "path";
+import '../models/user.model.js';    // 👈 Ensures User model is registered
+import '../models/doctor.model.js';
 
-
-// Get all reports with populated data
-export const getAllReports = async (req, res) => {
+// Create or update report
+export const saveReport = async (req, res) => {
     try {
-        const reports = await Report.find()
-            .populate({ path: 'doctorId', select: 'firstName lastName email' })
-            .populate({ path: 'userId', select: 'firstName lastName mobile email' })
-            .populate({ path: 'appointmentId', select: 'date' })
-            .sort({ createdAt: -1 });
+        const { doctorId, userId, appointmentId, date, status, fees, doctorNote } = req.body;
 
-        return res.status(200).json({
+        const file = req.file ? req.file.filename : null;
+
+        const report = await Report.findOneAndUpdate(
+            { appointmentId },
+            {
+                doctorId,
+                userId,
+                appointmentId,
+                date,
+                status,
+                fees,
+                doctorNote,
+                ...(file && { reportFile: file }),
+            },
+            { upsert: true, new: true }
+        );
+
+        res.status(200).json({ success: true, message: "Report saved successfully", data: report });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Error saving report", error: err.message });
+    }
+};
+
+// Get paginated reports with filters
+export const getReports = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, doctorId, status, startDate, endDate } = req.query;
+
+        const filter = {};
+
+        // ✅ Doctor-specific filter
+        if (doctorId) filter.doctorId = doctorId;
+
+        // ✅ Status filter (ignore "All")
+        if (status && status !== "All") filter.status = status;
+
+        // ✅ Date filter
+        if (startDate && endDate) {
+            // Custom range selected
+            filter.date = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+            };
+        } else {
+            // Default: current month
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+            filter.date = {
+                $gte: firstDay,
+                $lte: lastDay,
+            };
+        }
+
+        // ✅ Fetch reports with pagination
+        const reports = await Report.find(filter)
+            .populate("doctorId", "firstName lastName")
+            .populate("userId", "firstName lastName")
+            .sort({ date: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
+
+        // ✅ Count total
+        const total = await Report.countDocuments(filter);
+
+        res.status(200).json({
             success: true,
-            message: "All reports fetched successfully.",
-            data: reports
+            data: reports,
+            pagination: {
+                total,
+                currentPage: Number(page),
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (err) {
-        console.error('Admin Fetch Reports Error:', err);
-        return res.status(500).json({
-            success: false,
-            message: "Server Error",
-            error: err.message
-        });
+        res.status(500).json({ success: false, message: "Error fetching reports", error: err.message });
     }
 };
 
-export const getReportByMobile = async (req, res) => {
+export const uploadCSV = async (req, res) => {
     try {
-        const mobile = req.params.mobile;
-        if (!mobile || !/^\d{10}$/.test(mobile)) {
-            return res.status(400).json({ success: false, message: 'Invalid or missing mobile number' });
+        const doctorId = req.body.doctorId;
+        const filePath = req.file.path;
+
+        if (!doctorId || !filePath) {
+            return res.status(400).json({ success: false, message: "Missing doctorId or CSV file" });
         }
 
-        console.log("🔎 Searching user with phone_number:", mobile);
-        const user = await User.findOne({ phone_number: mobile }).select('_id');
-        console.log("📋 User result:", user);
+        const db = getDoctorDB(doctorId);
+        const Patient = db.model("Patient");
 
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found for given mobile number' });
-        }
+        const results = [];
 
-        const reports = await Report.find({ userId: user._id })
-            .populate('doctorId', 'firstName lastName email')
-            .populate('appointmentId', 'date')
-            .sort({ createdAt: -1 });
-
-        if (reports.length === 0) {
-            return res.status(404).json({ success: false, message: 'No reports found for this user' });
-        }
-
-        return res.status(200).json({ success: true, message: 'Reports fetched successfully', data: reports });
+        fs.createReadStream(filePath)
+            .pipe(csvParser())
+            .on("data", (data) => results.push(data))
+            .on("end", async () => {
+                const inserted = await Patient.insertMany(results);
+                res.status(200).json({
+                    success: true,
+                    message: "CSV uploaded successfully",
+                    data: inserted,
+                });
+            });
     } catch (err) {
-        return res.status(500).json({ success: false, message: 'Server error', error: err.message });
+        res.status(500).json({ success: false, message: "Error uploading CSV", error: err.message });
     }
 };
 
-export const updateReport = async (req, res) => {
-    try {
-        const { reportId, symptoms, allergies, currentMedications, diagnosis, treatmentPlan } = req.body;
-        const file = req.files?.attachments ? req.files.attachments[0] : null;
-
-        if (!reportId || !symptoms || !diagnosis) {
-            return res.status(400).json({ success: false, message: 'Required fields missing.' });
-        }
-
-        const existingReport = await Report.findById(reportId);
-        if (!existingReport) {
-            return res.status(404).json({ success: false, message: "Report not found." });
-        }
-
-        let fileUrl = existingReport.attachments;
-        if (file) {
-            // Save file to local `/uploads/` folder (or wherever your multer is configured)
-            const filename = `admin-${Date.now()}-${file.originalname}`;
-            const localPath = path.join('uploads', filename);
-            fs.renameSync(file.path, localPath); // move to uploads
-
-            fileUrl = `/uploads/${filename}`; // store path to DB
-        }
-
-        const updated = await Report.findByIdAndUpdate(reportId, {
-            symptoms,
-            allergies,
-            currentMedications: JSON.parse(currentMedications),
-            diagnosis,
-            treatmentPlan,
-            attachments: fileUrl
-        }, { new: true });
-
-        return res.status(200).json({
-            success: true,
-            message: "Report updated by Admin successfully.",
-            data: updated
-        });
-    } catch (err) {
-        console.error("Admin Update Report Error:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Server Error",
-            error: err.message
-        });
-    }
-};
-
-
-// GET /reports/export (with validation and security)
 export const exportCSV = async (req, res) => {
     try {
-        const { error, value } = reportFilterSchema.validate(req.query, {
-            abortEarly: false,
-            stripUnknown: true
-        });
-
-        if (error) {
-            const errors = error.details.map(e => e.message);
-            return res.status(400).json({ success: false, errors });
-        }
-
-        const { doctor, status, startDate, endDate } = value;
-
-        const query = {};
-        if (doctor) query.doctor = doctor;
-        if (status) query.status = status;
-        if (startDate || endDate) {
-            query.date = {};
-            if (startDate) query.date.$gte = new Date(startDate);
-            if (endDate) query.date.$lte = new Date(endDate);
-        }
-
-        const reports = await Report.find(query).limit(1000);
+        const reports = await Report.find()
+            .populate("doctorId", "firstName lastName")
+            .populate("userId", "firstName lastName")
+            .populate("appointmentId", "date");
 
         if (!reports.length) {
-            return res.status(404).json({ success: false, message: 'No reports found for export.' });
+            return res.status(404).json({ success: false, message: "No reports to export." });
         }
 
-        const fields = ['date', 'doctor', 'patient', 'status', 'fees', 'reportNote'];
-        const parser = new Parser({ fields });
-        const csv = parser.parse(reports);
+        const formattedData = reports.map((r) => ({
+            Date: r.appointmentId?.date?.toISOString().split('T')[0] || '',
+            Doctor: `${r.doctorId?.firstName || ''} ${r.doctorId?.lastName || ''}`,
+            Patient: `${r.userId?.firstName || ''} ${r.userId?.lastName || ''}`,
+            Status: r.status || '',
+            Fees: r.fees || 0,
+            DoctorNote: r.doctorNote || '',
+            ReportFile: r.reportFile || '',
+        }));
 
-        res.header('Content-Type', 'text/csv');
-        res.attachment('report-export.csv');
-        return res.send(csv);
+        const parser = new Parser();
+        const csv = parser.parse(formattedData);
+
+        res.header("Content-Type", "text/csv");
+        res.attachment("appointment-reports.csv");
+        res.status(200).send(csv);
     } catch (err) {
-        console.error("❌ CSV Export Error:", err);
-        return res.status(500).json({ success: false, message: 'CSV export failed', error: err.message });
-    }
-};
-
-// PATCH /reports/:id/upload (with validation and file checks)
-export const uploadReport = async (req, res) => {
-    try {
-        const { error, value } = reportUploadSchema.validate(req.body, {
-            abortEarly: false,
-            stripUnknown: true
+        res.status(500).json({
+            success: false,
+            message: "Failed to export CSV",
+            error: err.message
         });
-
-        if (error) {
-            const errors = error.details.map(e => e.message);
-            return res.status(400).json({ success: false, errors });
-        }
-
-        const { id } = req.params;
-        const report = await Report.findById(id);
-        if (!report) {
-            return res.status(404).json({ success: false, message: 'Report not found' });
-        }
-
-        // Handle file upload validation
-        if (req.file) {
-            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-            const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
-            const ext = path.extname(req.file.originalname).toLowerCase();
-
-            if (!allowedTypes.includes(req.file.mimetype) || !allowedExtensions.includes(ext)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid file type. Only PDF, JPG, and PNG allowed.'
-                });
-            }
-
-            if (req.file.size > 5 * 1024 * 1024) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'File size exceeds 5MB limit.'
-                });
-            }
-
-            report.reportFile = `/uploads/${req.file.filename}`;
-        }
-
-        if (value.reportNote) {
-            report.reportNote = value.reportNote.trim();
-        }
-
-        await report.save();
-
-        res.json({ success: true, message: 'Report updated successfully', data: report });
-    } catch (err) {
-        console.error("❌ Upload Error:", err);
-        return res.status(500).json({ success: false, message: 'Upload error', error: err.message });
     }
 };

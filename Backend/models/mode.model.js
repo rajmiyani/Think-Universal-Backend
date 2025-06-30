@@ -40,4 +40,6 @@ const modeSchema = new mongoose.Schema({
 // Index for fast lookups
 modeSchema.index({ name: 1, currency: 1 }, { unique: true });
 
-export default adminDB.model('Mode', modeSchema);
+const Mode = adminDB.models.Mode || adminDB.model('Mode', modeSchema);
+
+export default Mode;

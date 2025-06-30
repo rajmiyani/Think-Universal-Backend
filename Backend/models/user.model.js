@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { adminDB } from '../config/mongoose.js';
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -30,4 +31,5 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
-export default mongoose.model('User', userSchema);
+const User = adminDB.models.User || adminDB.model('User', userSchema);
+export default User;

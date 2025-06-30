@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { doctorSchema, updateDoctorSchema } from '../validations/validationSchema.js'
+import doctorModel from '../models/doctor.model.js';
 
 export const addDoctor = async (req, res) => {
     try {
@@ -94,27 +95,24 @@ export const allDoctor = async (req, res) => {
 export const updateDoctorProfile = async (req, res) => {
     try {
         const { id: requesterId } = req.user;
-        console.log(req.user);
-        
 
-        // ✅ Validate ObjectId format
+        console.log("🔐 Authenticated User:", req.user);
+
         if (!mongoose.Types.ObjectId.isValid(requesterId)) {
             return res.status(400).json({ success: false, message: "Invalid doctor ID" });
         }
 
-        // 🔍 Fetch doctor by ID from token
-        const doctor = await Doctor.findById(requesterId);
+        // Use doctorModel from adminDB
+        const doctor = await doctorModel.findById(requesterId);
         if (!doctor) {
             return res.status(404).json({ success: false, message: "Doctor not found" });
         }
 
-        // ✅ Parse form data if bankDetails is stringified
         const parsedBody = { ...req.body };
         if (parsedBody.bankDetails && typeof parsedBody.bankDetails === "string") {
             parsedBody.bankDetails = JSON.parse(parsedBody.bankDetails);
         }
 
-        // ✅ Validate fields using Joi
         const { error, value } = updateDoctorSchema.validate(parsedBody, { abortEarly: false });
         if (error) {
             return res.status(400).json({
@@ -124,23 +122,21 @@ export const updateDoctorProfile = async (req, res) => {
             });
         }
 
-        // 🔁 Email check (if updated)
+        // Email and phone checks
         if (value.email && value.email !== doctor.email) {
-            const emailExists = await Doctor.findOne({ email: value.email, _id: { $ne: doctor._id } });
+            const emailExists = await doctorModel.findOne({ email: value.email, _id: { $ne: doctor._id } });
             if (emailExists) {
                 return res.status(409).json({ success: false, message: "Email already in use" });
             }
         }
 
-        // 🔁 Phone check (if updated)
         if (value.phoneNo && value.phoneNo !== doctor.phoneNo) {
-            const phoneExists = await Doctor.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctor._id } });
+            const phoneExists = await doctorModel.findOne({ phoneNo: value.phoneNo, _id: { $ne: doctor._id } });
             if (phoneExists) {
                 return res.status(409).json({ success: false, message: "Phone number already in use" });
             }
         }
 
-        // 🖼 Handle avatar update if provided
         if (req.file) {
             value.avatar = {
                 data: req.file.buffer,
@@ -148,8 +144,7 @@ export const updateDoctorProfile = async (req, res) => {
             };
         }
 
-        // ✅ Perform the update
-        const updatedDoctor = await Doctor.findByIdAndUpdate(
+        const updatedDoctor = await doctorModel.findByIdAndUpdate(
             requesterId,
             { $set: value },
             { new: true, runValidators: true, context: 'query' }
