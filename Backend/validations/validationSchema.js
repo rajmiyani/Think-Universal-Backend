@@ -865,3 +865,9 @@ export const createReportSchema = Joi.object({
     patientId: Joi.string()
         .optional()
 }).prefs({ abortEarly: false, stripUnknown: true });
+
+
+export const todayAppointmentsQuerySchema = Joi.object({
+    doctorId: Joi.string().optional(),
+    status: Joi.string().valid("Upcoming", "Completed", "Cancel", "Pending").optional()
+});

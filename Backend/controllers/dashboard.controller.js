@@ -1,9 +1,10 @@
 import Dashboard from '../models/dashboard.model.js';
 import moment from 'moment';
-import { todayPatientsQuerySchema, dashboardSummaryQuerySchema } from '../validations/validationSchema.js'
+import { todayPatientsQuerySchema, dashboardSummaryQuerySchema, todayAppointmentsQuerySchema } from '../validations/validationSchema.js'
 import appointmentModel from '../models/appointment.model.js';
-import patientModel from '../models/patient.model.js';
+import patientModel from '../models/mobileApp/patient.js';
 import paymentModel from '../models/BankDetails.model.js';
+import patient from '../models/mobileApp/patient.js';
 
 // =====================================================================
 // Helper Functions
@@ -16,10 +17,12 @@ import paymentModel from '../models/BankDetails.model.js';
  * @param {string} valueLabel - Label for the value property
  * @returns {Array} Sorted array of objects
  */
-const formatKeyValue = (obj, keyLabel, valueLabel) => {
-    return Object.entries(obj)
-        .map(([key, value]) => ({ [keyLabel]: key, [valueLabel]: value }))
-        .sort((a, b) => a[keyLabel].localeCompare(b[keyLabel]));
+// Helper: Format response as key-value array
+export const formatKeyValue = (obj, keyName, valueName) => {
+    return Object.entries(obj).map(([key, value]) => ({
+        [keyName]: key,
+        [valueName]: value
+    }));
 };
 
 /**
@@ -27,31 +30,32 @@ const formatKeyValue = (obj, keyLabel, valueLabel) => {
  * @param {Object} query - Request query parameters
  * @returns {Object} Validated and parsed date range
  */
-const validateDateRange = async (query) => {
-    const { error, value } = dateRangeSchema.validate(query);
-    if (error) {
-        throw new Error(error.details.map(e => e.message).join(', '));
+// Helper: Validate and format date range
+export const validateDateRange = (query) => {
+    const { startDate, endDate } = query;
+
+    const start = startDate ? moment(startDate).startOf('day') : moment().startOf('month');
+    const end = endDate ? moment(endDate).endOf('day') : moment().endOf('month');
+
+    if (!start.isValid() || !end.isValid()) {
+        throw new Error('Invalid date format');
     }
+
+    if (start.isAfter(end)) {
+        throw new Error('Start date must be before end date');
+    }
+
     return {
-        startDate: moment(value.startDate).startOf('day').toDate(),
-        endDate: moment(value.endDate).endOf('day').toDate()
+        startDate: start.toDate(),
+        endDate: end.toDate()
     };
 };
 
-// =====================================================================
-// Analytics Controller Functions
-// =====================================================================
 
-/**
- * Retrieves dashboard summary for the current month
- * - Total revenue
- * - Appointment count
- * - Unique patient count
- * - Average appointment duration
- */
+
+// Graph 
 export const getDashboardSummary = async (req, res) => {
     try {
-        // 1. Validate optional date range from query
         const { error, value } = dashboardSummaryQuerySchema.validate(req.query, {
             abortEarly: false,
             stripUnknown: true
@@ -60,93 +64,103 @@ export const getDashboardSummary = async (req, res) => {
         if (error) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid query parameters',
+                message: "Invalid query parameters",
                 errors: error.details.map(e => e.message)
             });
         }
 
-        // 2. Calculate date range
         const startDate = value.startDate
-            ? moment(value.startDate).startOf('day').toDate()
-            : moment().startOf('month').toDate();
+            ? moment(value.startDate).startOf("day")
+            : moment().startOf("month");
 
         const endDate = value.endDate
-            ? moment(value.endDate).endOf('day').toDate()
-            : moment().endOf('month').toDate();
+            ? moment(value.endDate).endOf("day")
+            : moment().endOf("month");
 
-        // 3. Fetch appointments within the range
+        // ✅ Fetch appointments directly from DB with date filter
         const appointments = await appointmentModel.find({
-            date: { $gte: startDate, $lte: endDate }
-        }).populate('patient', '_id name').lean();
-        console.log("🧾 All Appointments:", appointments);
+            date: {
+                $gte: startDate.format("YYYY-MM-DD"),
+                $lte: endDate.format("YYYY-MM-DD")
+            }
+        }).populate("userId", "_id name").lean();
 
         const appointmentCount = appointments.length;
-        const totalDuration = appointments.reduce((sum, a) => sum + (a.duration || 0), 0);
-        const avgDuration = appointmentCount > 0 ? Math.round(totalDuration / appointmentCount) : 0;
 
-        // 4. Count unique patients
-        const patientSet = new Set(
-            appointments.map(a => a.patient?._id?.toString() || a.patientName)
+        // ✅ Count by status (case-insensitive)
+        const statusCount = {
+            success: appointments.filter(a => a.status?.toLowerCase() === 'success').length,
+            pending: appointments.filter(a =>
+                ['pending', 'upcoming'].includes(a.status?.toLowerCase())
+            ).length,
+            cancel: appointments.filter(a => a.status?.toLowerCase() === 'cancel').length,
+        };
+
+
+        // ✅ Unique patient count
+        const uniquePatients = new Set(
+            appointments.map(a => a.userId?._id?.toString() || a.name)
         );
-        const patientCount = patientSet.size;
 
-        // 5. Fetch revenue data
+        // ✅ Revenue from payments
         const payments = await paymentModel.find({
-            date: { $gte: startDate, $lte: endDate }
+            date: {
+                $gte: startDate.toDate(),
+                $lte: endDate.toDate()
+            }
         }).lean();
-        console.log("payments",payments);
 
         const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-        // 6. Save summary snapshot to Dashboard model
+        // ✅ Average duration (if your model includes 'duration')
+        const totalDuration = appointments.reduce((sum, a) => sum + (a.duration || 0), 0);
+        const avgDuration = appointmentCount > 0 ? Math.round(totalDuration / appointmentCount) : 0;
+
+        // ✅ Save snapshot (optional)
         await Dashboard.create({
             date: new Date(),
             revenue: totalRevenue,
             appointments: appointmentCount,
-            patients: patientCount,
+            patients: uniquePatients.size,
             avgDuration,
-            rangeStart: startDate,
-            rangeEnd: endDate
+            rangeStart: startDate.toDate(),
+            rangeEnd: endDate.toDate()
         });
 
-        // 7. Return response
-        res.json({
+        // ✅ Return all metrics
+        return res.status(200).json({
             success: true,
             data: {
                 revenue: totalRevenue,
                 appointments: appointmentCount,
-                patients: patientCount,
+                appointmentStatus: statusCount,
+                patients: uniquePatients.size,
                 avgDuration
             },
             meta: {
-                period: value.startDate || value.endDate ? 'custom-range' : 'current-month',
-                startDate,
-                endDate
+                period: value.startDate || value.endDate ? "custom-range" : "current-month",
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
             }
         });
 
     } catch (err) {
-        console.error('❌ Dashboard summary error:', err);
+        console.error("❌ Dashboard summary error:", err);
         res.status(500).json({
             success: false,
-            message: 'Failed to generate dashboard summary',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            message: "Failed to generate dashboard summary",
+            error: err.message
         });
     }
 };
 
-/**
- * Retrieves comprehensive revenue trends:
- * - Yearly revenue by year
- * - Monthly revenue by month
- * - Weekly revenue by week
- */
+// Revenue Graph
 export const getRevenueTrends = async (req, res) => {
     try {
-        // Validate and parse date range
+        // 1. Validate date range
         let dateRange;
         try {
-            dateRange = await validateDateRange(req.query);
+            dateRange = validateDateRange(req.query);
         } catch (validationError) {
             return res.status(400).json({
                 success: false,
@@ -155,34 +169,28 @@ export const getRevenueTrends = async (req, res) => {
             });
         }
 
-        // Fetch data from database
-        const data = await Dashboard.find({
+        // 2. Fetch dashboard data
+        const records = await Dashboard.find({
             date: { $gte: dateRange.startDate, $lte: dateRange.endDate }
         });
 
-        // Initialize trend accumulators
         const yearly = {};
         const monthly = {};
         const weekly = {};
 
-        // Aggregate revenue data
-        data.forEach(record => {
+        // 3. Aggregate revenue trends
+        records.forEach(record => {
             const date = moment(record.date);
             const year = date.format('YYYY');
             const month = date.format('YYYY-MM');
             const week = date.format('GGGG-[W]WW');
 
-            // Yearly revenue
             yearly[year] = (yearly[year] || 0) + (record.revenue || 0);
-
-            // Monthly revenue
             monthly[month] = (monthly[month] || 0) + (record.revenue || 0);
-
-            // Weekly revenue
             weekly[week] = (weekly[week] || 0) + (record.revenue || 0);
         });
 
-        // Prepare response
+        // 4. Return formatted response
         res.status(200).json({
             success: true,
             data: {
@@ -195,21 +203,17 @@ export const getRevenueTrends = async (req, res) => {
                 endDate: dateRange.endDate
             }
         });
+
     } catch (err) {
-        console.error('Revenue trends error:', err);
+        console.error('❌ Revenue trends error:', err);
         res.status(500).json({
             success: false,
-            message: "Failed to generate revenue trends",
+            message: 'Failed to generate revenue trends',
             error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
 };
 
-/**
- * Retrieves today's patient appointments with filtering options
- * - Filterable by doctor name and appointment status
- * - Returns formatted appointment details
- */
 export const getTodayPatients = async (req, res) => {
     try {
         // Validate query parameters
@@ -237,7 +241,7 @@ export const getTodayPatients = async (req, res) => {
         if (value.status) query.status = value.status;
 
         // Fetch data from database
-        const patients = await Dashboard.find(query)
+        const patients = await patient.find(query)
             .select("patientName doctorName date status appointmentType duration revenue")
             .sort({ date: 1 })
             .lean();
@@ -271,6 +275,75 @@ export const getTodayPatients = async (req, res) => {
             success: false,
             message: "Failed to fetch today's patients",
             error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+    }
+};
+
+export const getTodayAppointment = async (req, res) => {
+    try {
+        // ✅ Validate query parameters
+        const { error, value } = todayAppointmentsQuerySchema.validate(req.query, {
+            abortEarly: false,
+            stripUnknown: true
+        });
+
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                errors: error.details.map(e => e.message)
+            });
+        }
+
+        // 📅 Today's date range
+        const startOfDay = moment().startOf("day").toDate();
+        const endOfDay = moment().endOf("day").toDate();
+
+        // 🔍 Build query
+        const query = {
+            createdAt: { $gte: startOfDay, $lte: endOfDay }
+        };
+
+        if (value.doctorId) query.doctorId = value.doctorId;
+        if (value.status) query.status = value.status;
+
+        // 📦 Fetch data
+        const appointments = await appointmentModel.find(query)
+            .populate("doctorId", "firstName lastName") // optional
+            .populate("userId", "firstName lastName")   // optional
+            .select("date timeSlot status modeId price")
+            .sort({ createdAt: 1 })
+            .lean();
+
+        // 📋 Format response
+        const formatted = appointments.map(appt => ({
+            patient: appt.userId?.firstName || "N/A",
+            doctor: appt.doctorId?.firstName || "N/A",
+            time: moment(appt.date).format("hh:mm A"),
+            price: appt.price,
+            status: appt.status,
+            modeId: appt.modeId,
+            timeSlot: appt.timeSlot,
+        }));
+
+        // ✅ Final response
+        res.status(200).json({
+            success: true,
+            data: formatted,
+            meta: {
+                date: new Date().toISOString().split("T")[0],
+                filters: {
+                    doctorId: value.doctorId || "any",
+                    status: value.status || "any"
+                }
+            }
+        });
+
+    } catch (err) {
+        console.error("❌ Error fetching today's appointments:", err);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch today's appointments",
+            error: process.env.NODE_ENV === "development" ? err.message : undefined
         });
     }
 };

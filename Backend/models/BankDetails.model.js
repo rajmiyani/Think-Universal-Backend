@@ -1,5 +1,6 @@
 // models/BankDetails.model.js
 import mongoose from "mongoose";
+import { adminDB } from "../config/mongoose.js";
 
 const BankDetailsSchema = new mongoose.Schema(
   {
@@ -63,4 +64,4 @@ const BankDetailsSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("BankDetails", BankDetailsSchema);
+export default adminDB.model("BankDetails", BankDetailsSchema);

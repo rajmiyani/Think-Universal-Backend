@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { mobileDB } from '../../config/mongoose.js';
+import { mobileDB, adminDB } from '../../config/mongoose.js'; // ✅ Import both DBs
 
 const patientSchema = new mongoose.Schema({
   name: { type: String, trim: true },
@@ -12,8 +12,11 @@ const patientSchema = new mongoose.Schema({
   state: { type: String },
   country: { type: String },
   zipcode: { type: Number },
-}, {
-  timestamps: true,
-});
+}, { timestamps: true });
 
-export default mobileDB.model('User', patientSchema); // 'User' is correct because that's the model name in mobile DB
+// ✅ Register in both DBs
+mobileDB.model('Users', patientSchema); // This connects to mobile data
+adminDB.model('Users', patientSchema);  // ✅ This fixes the populate error in appointment queries
+
+// Only export from one DB if needed
+export default mobileDB.model('Users');

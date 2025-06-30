@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { adminDB } from '../config/mongoose.js';
 
 const dashboardSchema = new mongoose.Schema({
     doctorName: {
@@ -93,4 +94,4 @@ dashboardSchema.virtual('formattedDate').get(function () {
     });
 });
 
-export default mongoose.model('Dashboard', dashboardSchema);
+export default adminDB.model('Dashboard', dashboardSchema);

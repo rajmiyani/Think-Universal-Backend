@@ -1,5 +1,6 @@
 // models/Transaction.model.js
 import mongoose from "mongoose";
+import { adminDB } from "../config/mongoose";
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -47,4 +48,4 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Transaction", transactionSchema);
+export default adminDB.model("Transaction", transactionSchema);
