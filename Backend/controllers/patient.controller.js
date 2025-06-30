@@ -1,9 +1,27 @@
+import mongoose from 'mongoose';
 import MobileUser from '../models/mobileApp/patient.js';
+import MobileAppointment from '../models/mobileApp/appointment.js';
 import AdminPatient from '../models/patient.model.js';
 
 export const getAllPatients = async (req, res) => {
   try {
-    const mobileUsers = await MobileUser.find().lean();
+    const { doctorId } = req.query;
+
+    if (doctorId && !mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).json({ success: false, message: 'Invalid doctorId format' });
+    }
+
+    let filterUserIds = [];
+
+    // 🔍 Step 1: Find appointments by doctorId to get userIds
+    if (doctorId) {
+      const appointments = await MobileAppointment.find({ doctorId }).select('userId');
+      filterUserIds = [...new Set(appointments.map(a => a.userId.toString()))];
+    }
+
+    // 🔍 Step 2: Get mobile users (with filter if doctorId provided)
+    const userQuery = doctorId ? { _id: { $in: filterUserIds } } : {};
+    const mobileUsers = await MobileUser.find(userQuery).lean();
 
     let inserted = 0;
     let skipped = 0;
@@ -13,18 +31,13 @@ export const getAllPatients = async (req, res) => {
       const email = user.email?.trim();
       const phone = user.contactNumber || user.phone_number?.toString();
 
-      // ❌ Skip if email or phone is missing
       if (!email || !phone) {
         skipped++;
         continue;
       }
 
-      // 🔍 Check if already exists
       const exists = await AdminPatient.findOne({
-        $or: [
-          { email },
-          { phone }
-        ]
+        $or: [{ email }, { phone }]
       });
 
       if (exists) {
@@ -32,7 +45,6 @@ export const getAllPatients = async (req, res) => {
         continue;
       }
 
-      // ✅ Create new patient
       try {
         const newPatient = await AdminPatient.create({
           firstName: user.firstName || user.name || 'Unknown',
