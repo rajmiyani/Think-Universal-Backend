@@ -19,7 +19,12 @@ const validateExportParams = (req, res, next) => {
 
 export const getAppointments = async (req, res) => {
     try {
-        const appointments = await MobileAppointment.find().lean();
+        const { doctorId } = req.query;
+
+        const filter = {};
+        if (doctorId) filter.doctorId = doctorId; // ✅ Only fetch appointments for this doctor
+
+        const appointments = await MobileAppointment.find(filter).lean();
 
         let inserted = 0;
         let skipped = 0;
@@ -27,7 +32,10 @@ export const getAppointments = async (req, res) => {
 
         for (const appt of appointments) {
             const exists = await AdminAppointment.findOne({
-                _id: appt._id // or match by userId + doctorId + date + timeSlot
+                userId: appt.userId,
+                doctorId: appt.doctorId,
+                date: appt.date,
+                timeSlot: appt.timeSlot
             });
 
             if (exists) {
@@ -38,7 +46,7 @@ export const getAppointments = async (req, res) => {
             try {
                 const newAppt = await AdminAppointment.create({
                     ...appt,
-                    _id: undefined // let MongoDB generate a new _id
+                    _id: undefined // Let MongoDB generate new _id
                 });
 
                 inserted++;
@@ -49,13 +57,16 @@ export const getAppointments = async (req, res) => {
             }
         }
 
+        const finalAppointments = await AdminAppointment.find({ doctorId }).sort({ date: -1 });
+        console.log(finalAppointments);
+
         return res.status(200).json({
             success: true,
             message: '✅ Appointment sync completed',
             inserted,
             skipped,
             totalFetched: appointments.length,
-            appointments: synced
+            appointments: finalAppointments
         });
 
     } catch (err) {
