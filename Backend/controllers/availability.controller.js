@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Availability from '../models/availability.model.js';
 import Doctor from '../models/doctor.model.js';
 import { availabilitySchema } from '../validations/validationSchema.js';
@@ -109,19 +110,23 @@ export const setAvailability = async (req, res) => {
 // 📆 Get Calendar Availability
 export const getAvailabilityDoctor = async (req, res) => {
     try {
-        // ✅ Optional custom date range
-        const { startDate, endDate } = req.query;
-        const start = dayjs(startDate).isValid() ? dayjs(startDate).startOf('day') : dayjs().startOf('month');
-        const end = dayjs(endDate).isValid() ? dayjs(endDate).endOf('day') : dayjs().endOf('month');
+        const { doctorId } = req.query;
 
-        const doctors = await Doctor.find({});
+        if (doctorId && !mongoose.Types.ObjectId.isValid(doctorId)) {
+            return res.status(400).json({ success: false, message: 'Invalid doctorId format' });
+        }
+
+        const doctorFilter = doctorId ? { _id: doctorId } : {};
+        const doctors = await Doctor.find(doctorFilter);
+
         if (!doctors.length) {
             return res.status(404).json({ success: false, message: 'No doctors found' });
         }
 
-        const allSlots = await Availability.find({});
-        const today = dayjs();
+        const availabilityFilter = doctorId ? { doctorId } : {};
+        const allSlots = await Availability.find(availabilityFilter);
 
+        const today = dayjs();
         let events = [];
 
         for (let slot of allSlots) {
@@ -140,11 +145,6 @@ export const getAvailabilityDoctor = async (req, res) => {
 
                 while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
                     const repeatedDate = current.date(originalDay);
-
-                    if (repeatedDate.isBefore(start) || repeatedDate.isAfter(end)) {
-                        current = current.add(1, 'month');
-                        continue;
-                    }
 
                     const startDateTime = dayjs(`${repeatedDate.format('YYYY-MM-DD')}T${slot.fromTime}`);
                     const isLocked = startDateTime.diff(today, 'hour') < 24;
@@ -166,8 +166,6 @@ export const getAvailabilityDoctor = async (req, res) => {
                 }
             } else {
                 const slotDate = dayjs(slot.date);
-                if (slotDate.isBefore(start) || slotDate.isAfter(end)) continue;
-
                 const startDateTime = dayjs(`${slotDate.format('YYYY-MM-DD')}T${slot.fromTime}`);
                 const isLocked = startDateTime.diff(today, 'hour') < 24;
 

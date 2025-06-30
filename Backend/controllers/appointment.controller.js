@@ -21,8 +21,13 @@ export const getAppointments = async (req, res) => {
     try {
         const { doctorId } = req.query;
 
+        // ✅ Validate doctorId if provided
+        if (doctorId && !mongoose.Types.ObjectId.isValid(doctorId)) {
+            return res.status(400).json({ success: false, message: 'Invalid doctorId format' });
+        }
+
         const filter = {};
-        if (doctorId) filter.doctorId = doctorId; // ✅ Only fetch appointments for this doctor
+        if (doctorId) filter.doctorId = doctorId;
 
         const appointments = await MobileAppointment.find(filter).lean();
 
@@ -57,8 +62,8 @@ export const getAppointments = async (req, res) => {
             }
         }
 
-        const finalAppointments = await AdminAppointment.find({ doctorId }).sort({ date: -1 });
-        console.log(finalAppointments);
+        const finalFilter = doctorId ? { doctorId } : {};
+        const finalAppointments = await AdminAppointment.find(finalFilter).sort({ date: -1 });
 
         return res.status(200).json({
             success: true,

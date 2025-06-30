@@ -2,6 +2,7 @@ import Report from "../models/report.model.js";
 import path from "path";
 import '../models/user.model.js';    // 👈 Ensures User model is registered
 import '../models/doctor.model.js';
+import mongoose from "mongoose";
 
 // Create or update report
 export const saveReport = async (req, res) => {
@@ -38,21 +39,30 @@ export const getReports = async (req, res) => {
 
         const filter = {};
 
-        // ✅ Doctor-specific filter
-        if (doctorId) filter.doctorId = doctorId;
+        // ✅ Validate doctorId if provided
+        if (doctorId) {
+            if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid doctorId format'
+                });
+            }
+            filter.doctorId = doctorId;
+        }
 
         // ✅ Status filter (ignore "All")
-        if (status && status !== "All") filter.status = status;
+        if (status && status !== "All") {
+            filter.status = status;
+        }
 
         // ✅ Date filter
         if (startDate && endDate) {
-            // Custom range selected
             filter.date = {
                 $gte: new Date(startDate),
                 $lte: new Date(endDate),
             };
         } else {
-            // Default: current month
+            // Default to current month
             const now = new Date();
             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
             const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -68,13 +78,12 @@ export const getReports = async (req, res) => {
             .populate("doctorId", "firstName lastName")
             .populate("userId", "firstName lastName")
             .sort({ date: -1 })
-            .skip((page - 1) * limit)
+            .skip((page - 1) * parseInt(limit))
             .limit(parseInt(limit));
 
-        // ✅ Count total
         const total = await Report.countDocuments(filter);
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             data: reports,
             pagination: {
@@ -83,8 +92,14 @@ export const getReports = async (req, res) => {
                 totalPages: Math.ceil(total / limit),
             },
         });
+
     } catch (err) {
-        res.status(500).json({ success: false, message: "Error fetching reports", error: err.message });
+        console.error('❌ getReports Error:', err);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching reports",
+            error: err.message
+        });
     }
 };
 
