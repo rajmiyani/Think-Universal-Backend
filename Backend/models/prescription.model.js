@@ -1,11 +1,16 @@
 import mongoose from 'mongoose';
+import { adminDB } from '../config/mongoose.js';
 
 const prescriptionSchema = new mongoose.Schema({
+    reportId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Report'
+    },
     prescriptionNote: {
         type: String,
         required: [true, 'Prescription note is required'],
         trim: true,
-        minlength: [10, 'Prescription note must be at least 10 characters'],
+        minlength: [2, 'Prescription note must be at least 2 characters'],
         maxlength: [2000, 'Prescription note cannot exceed 2000 characters']
     },
     patientMobile: {
@@ -33,4 +38,4 @@ prescriptionSchema.set('toJSON', {
     }
 });
 
-export default mongoose.model('Prescription', prescriptionSchema);
+export default adminDB.model('Prescription', prescriptionSchema);

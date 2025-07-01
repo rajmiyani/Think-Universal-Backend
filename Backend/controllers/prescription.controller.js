@@ -1,77 +1,73 @@
 import Prescription from '../models/prescription.model.js';
 import Report from '../models/report.model.js';
+import mongoose from 'mongoose';
 import { getPrescriptionsParamSchema, prescriptionSchema } from '../validations/validationSchema.js'
 
 // Add prescription to report (reportId from URL param, createdBy from user)
 export const addPrescription = async (req, res) => {
     try {
-        console.log("📥 API Hit: /addPrescription/:phoneNo");
+        const { reportId, prescriptionNote, patientMobile } = req.body;
 
-        // ✅ Validate request body
-        const { error, value } = prescriptionSchema.validate(req.body, {
-            abortEarly: false,
-            stripUnknown: true
-        });
-
-        if (error) {
-            console.log("❌ Validation error:", error.details.map(e => e.message));
+        if (!prescriptionNote) {
             return res.status(400).json({
                 success: false,
-                errors: error.details.map(e => e.message)
+                message: "prescriptionNote is required"
             });
         }
 
-        const { prescriptionNote, createdBy: inputCreatedBy } = value;
-        const mobile = req.params.phoneNo?.trim();
+        let mobile = '';
+        let finalReportId = reportId;
 
-        if (!mobile) {
-            return res.status(400).json({
-                success: false,
-                message: 'Patient mobile number is required in the URL.'
-            });
+        if (reportId) {
+            const report = await Report.findById(reportId); // No need to populate userId now
+
+            if (!report) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Report not found'
+                });
+            }
+
+            console.log("📋 Fetched Report:", report);
+
+            // ✅ Use phoneNo directly from report
+            if (report.phoneNo) {
+                mobile = report.phoneNo.trim();
+            } else if (patientMobile) {
+                console.warn("⚠️ report.phoneNo missing, falling back to patientMobile from request body");
+                mobile = patientMobile.trim();
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Patient contact number is missing in the report and not provided manually'
+                });
+            }
+
+        } else {
+            if (!patientMobile) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Either reportId or patientMobile is required"
+                });
+            }
+
+            mobile = patientMobile.trim();
+            finalReportId = null;
         }
 
-        console.log("📱 Mobile received:", mobile);
-        console.log("📝 Prescription Note:", prescriptionNote);
+        // Ensure createdBy is valid
+        const createdBy = req.user?.name && req.user.name.length >= 3
+            ? req.user.name
+            : (req.body.createdBy?.trim() || 'Unknown');
 
-        // 🧠 Use createdBy from user or request body
-        const createdBy = req.user?.name || inputCreatedBy || 'Unknown';
-        console.log("👨‍⚕️ Created By:", createdBy);
-
-        // ✅ Ensure report exists for the given mobile
-        const reportExists = await Report.exists({ mobile });
-        if (!reportExists) {
-            console.log("❌ No report found for the provided mobile number.");
-            return res.status(404).json({
-                success: false,
-                message: 'No report found for the provided mobile number.'
-            });
-        }
-
-        // ✅ Check for duplicate prescription (same patient, same note, same creator)
-        const duplicate = await Prescription.findOne({
-            patientMobile: mobile,
-            createdBy,
-            prescriptionNote
-        });
-
-        if (duplicate) {
-            console.log("⚠️ Duplicate prescription found:", duplicate);
-            return res.status(409).json({
-                success: false,
-                message: 'Duplicate prescription for this patient and creator.'
-            });
-        }
-
-        // ✅ Save new prescription
         const newPrescription = new Prescription({
             patientMobile: mobile,
             prescriptionNote,
-            createdBy
+            createdBy,
+            reportId: finalReportId
         });
 
         await newPrescription.save();
-        console.log("✅ Prescription saved:", newPrescription);
 
         return res.status(201).json({
             success: true,
@@ -80,11 +76,11 @@ export const addPrescription = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("🔥 Error in addPrescription:", err);
-        return res.status(500).json({
+        console.error('❌ Error adding prescription:', err);
+        res.status(500).json({
             success: false,
             message: 'Failed to add prescription',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            error: err.message
         });
     }
 };
@@ -92,125 +88,70 @@ export const addPrescription = async (req, res) => {
 // Get prescriptions for a specific report (reportId from URL param)
 export const getPrescriptions = async (req, res) => {
     try {
-        // Validate phone number from params
-        const { error, value } = getPrescriptionsParamSchema.validate(req.params, {
-            abortEarly: false,
-            stripUnknown: true
-        });
+        const { page = 1, limit = 10, search = "", doctorId } = req.query;
 
-        if (error) {
-            return res.status(400).json({
-                success: false,
-                errors: error.details.map(e => e.message)
-            });
+        const filter = {};
+
+        // ✅ Filter by doctorId through related reports
+        if (doctorId) {
+            if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid doctorId format'
+                });
+            }
+
+            const reportIds = await Report.find({ doctorId }).distinct('_id');
+            filter.reportId = { $in: reportIds };
         }
 
-        const phoneNo = value.phoneNo.toString().trim();
-        const { search } = req.query;
-
-        console.log("📱 Fetching last prescription for:", phoneNo);
-
-        const filter = {
-            patientMobile: phoneNo
-        };
-
+        // ✅ Search by phone number or prescription note
         if (search) {
-            filter.prescriptionNote = { $regex: search, $options: 'i' };
+            filter.$or = [
+                { patientMobile: { $regex: search, $options: "i" } },
+                { prescriptionNote: { $regex: search, $options: "i" } }
+            ];
         }
 
-        // ✅ Get only the latest one
-        const lastPrescription = await Prescription
-            .findOne(filter)
-            .sort({ createdAt: -1 }); // Latest first
-
-        if (!lastPrescription) {
-            return res.status(404).json({
-                success: false,
-                message: 'No prescription found for this mobile number'
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            data: lastPrescription
-        });
-
-    } catch (err) {
-        console.error("🔥 Error in getPrescriptions:", err);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch prescription',
-            error: err.message
-        });
-    }
-};
-
-export const getPrescriptionsByDoctor = async (req, res) => {
-    try {
-        const doctorParam = req.params.doctorName?.trim();
-
-        if (!doctorParam) {
-            return res.status(400).json({
-                success: false,
-                message: "Doctor name is required in URL"
-            });
-        }
-
-        // 🧠 More relaxed regex: ignore multiple spaces, case-insensitive
-        const doctorRegex = new RegExp(doctorParam.replace(/\s+/g, '\\s*'), 'i');
-
-        // 🧪 Debug: list all doctors
-        const allDoctors = await Report.distinct("doctor");
-        console.log("📚 All doctors in DB:", allDoctors);
-
-        // 🔍 Match reports
-        const reports = await Report.find({ doctor: { $regex: doctorRegex } });
-
-        console.log("📋 Doctor Search:", doctorParam);
-        console.log("📋 Reports matched:", reports.length);
-
-        if (!reports || reports.length === 0) {
-            return res.status(200).json({
-                success: true,
-                data: [],
-                debug: {
-                    doctorParam,
-                    existingDoctors: allDoctors
-                }
-            });
-        }
-
-        // 📝 Get last prescription for each patient
-        const patientData = await Promise.all(
-            reports.map(async (report) => {
-                const lastPrescription = await Prescription.findOne({
-                    patientMobile: report.mobile
-                }).sort({ createdAt: -1 });
-
-                return {
-                    fullName: `${report.firstName} ${report.lastName}`,
-                    mobile: report.mobile,
-                    gender: report.gender,
-                    age: report.age,
-                    date: report.date,
-                    status: report.status || '',
-                    reportId: report._id,
-                    lastPrescription: lastPrescription?.prescriptionNote || 'No prescription yet',
-                    prescriptionId: lastPrescription?._id || null
-                };
+        // ✅ Fetch prescriptions and populate doctor/patient data
+        const prescriptions = await Prescription.find(filter)
+            .populate({
+                path: 'reportId',
+                populate: [
+                    { path: 'userId', select: 'firstName lastName' },
+                    { path: 'doctorId', select: 'firstName lastName' }
+                ]
             })
-        );
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * parseInt(limit))
+            .limit(parseInt(limit));
+
+        const total = await Prescription.countDocuments(filter);
+
+        const formatted = prescriptions.map((p, index) => ({
+            no: index + 1 + (page - 1) * limit,
+            patientName: `${p.reportId?.userId?.firstName || ''} ${p.reportId?.userId?.lastName || ''}`,
+            doctorName: `${p.reportId?.doctorId?.firstName || ''} ${p.reportId?.doctorId?.lastName || ''}`,
+            phoneNo: p.patientMobile,
+            date: p.createdAt,
+            prescription: p.prescriptionNote
+        }));
 
         return res.status(200).json({
             success: true,
-            data: patientData
+            data: formatted,
+            pagination: {
+                total,
+                currentPage: Number(page),
+                totalPages: Math.ceil(total / limit),
+            }
         });
 
     } catch (err) {
-        console.error("🔥 Error:", err);
-        return res.status(500).json({
+        console.error('❌ Error fetching prescriptions:', err);
+        res.status(500).json({
             success: false,
-            message: "Failed to fetch patients for this doctor",
+            message: 'Failed to fetch prescriptions',
             error: err.message
         });
     }
@@ -219,26 +160,30 @@ export const getPrescriptionsByDoctor = async (req, res) => {
 
 export const updatePrescription = async (req, res) => {
     try {
-        const { phoneNo } = req.params;
-        
-        const { prescriptionNote } = req.body;
-        
-        const createdBy = req.user?.name || req.body.createdBy || 'Unknown';
-        console.log(createdBy);
-        
+        console.log("🔥 Received req.body:", req.body);
 
-        if (!prescriptionNote || prescriptionNote.length < 10) {
+        const { phoneNo } = req.params;
+        const { prescriptionNote, reportId } = req.body;
+
+        if (!phoneNo) {
             return res.status(400).json({
                 success: false,
-                message: 'Prescription note must be at least 10 characters'
+                message: 'Phone number is required'
             });
         }
 
-        console.log("📞 Looking for:", phoneNo.trim());
-        console.log("👨‍⚕️ Looking doctor:", createdBy);
+        if (!prescriptionNote || prescriptionNote.trim().length < 2) {
+            return res.status(400).json({
+                success: false,
+                message: 'Prescription note must be at least 2 characters'
+            });
+        }
+
+        const trimmedPhone = phoneNo.trim();
+        const createdBy = req.user?.name || req.body?.createdBy || 'Unknown';
 
         const latest = await Prescription.findOne({
-            patientMobile: phoneNo.trim(),
+            patientMobile: trimmedPhone,
             createdBy
         }).sort({ createdAt: -1 });
 
@@ -249,7 +194,14 @@ export const updatePrescription = async (req, res) => {
             });
         }
 
-        latest.prescriptionNote = prescriptionNote;
+        latest.prescriptionNote = prescriptionNote.trim();
+        latest.updatedAt = new Date();
+
+        // ✅ If reportId is passed, update it too
+        if (reportId && mongoose.Types.ObjectId.isValid(reportId)) {
+            latest.reportId = reportId;
+        }
+
         await latest.save();
 
         return res.status(200).json({
@@ -257,8 +209,9 @@ export const updatePrescription = async (req, res) => {
             message: 'Prescription updated successfully',
             data: latest
         });
+
     } catch (err) {
-        console.error("🔥 Error in updateLatestPrescription:", err);
+        console.error("🔥 Error in updatePrescription:", err);
         return res.status(500).json({
             success: false,
             message: 'Failed to update prescription',
@@ -266,4 +219,5 @@ export const updatePrescription = async (req, res) => {
         });
     }
 };
+
 

@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 // Create or update report
 export const saveReport = async (req, res) => {
     try {
-        const { doctorId, userId, appointmentId, date, status, fees, doctorNote } = req.body;
+        const { doctorId, userId, appointmentId, date, status, fees, doctorNote, phoneNo } = req.body;
 
         const file = req.file ? req.file.filename : null;
 
@@ -21,6 +21,7 @@ export const saveReport = async (req, res) => {
                 status,
                 fees,
                 doctorNote,
+                phoneNo,
                 ...(file && { reportFile: file }),
             },
             { upsert: true, new: true }

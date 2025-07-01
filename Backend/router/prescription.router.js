@@ -1,19 +1,16 @@
 import express from 'express';
-import { addPrescription, getPrescriptionsByDoctor, getPrescriptions, updatePrescription } from '../controllers/prescription.controller.js';
+import { addPrescription, getPrescriptions, updatePrescription } from '../controllers/prescription.controller.js';
 import authMiddleware from '../middleware/prescription.middleware.js';
 
 const router = express.Router();
 
-// POST: Add a prescription
+// ✅ Add a prescription
 router.post('/addPrescription/:phoneNo', authMiddleware, addPrescription);
 
-// GET: Get all prescriptions for a report
-router.get('/getPrescriptions/:phoneNo', authMiddleware, getPrescriptions);
+// ✅ Get the latest prescription for a patient
+router.get('/getPrescriptions', authMiddleware, getPrescriptions);
 
-// Get all prescriptions (for admin)
-router.get('/getAllPrescriptions/:doctorName', getPrescriptionsByDoctor);
-
+// ✅ Update the latest prescription for a patient
 router.put('/prescriptionsUpdate/:phoneNo', authMiddleware, updatePrescription);
-
 
 export default router;
