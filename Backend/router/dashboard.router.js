@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+    getAppointmentStatus,
     getDashboardSummary,
     getRevenueTrends,
     getTodayAppointment,
@@ -8,8 +9,10 @@ import {
 
 const router = express.Router();
 
+router.get("/appointmentStatus", getAppointmentStatus);
+
 // Graph
-router.get('/summary',  getDashboardSummary);
+router.get('/summary', getDashboardSummary);
 
 // Revenue
 router.get('/revenue-trends', getRevenueTrends);

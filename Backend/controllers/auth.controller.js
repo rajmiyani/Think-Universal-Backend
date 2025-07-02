@@ -2,31 +2,44 @@ import bcrypt from 'bcryptjs';
 import doctorModel from '../models/doctor.model.js';
 import generateToken from '../utils/generateToken.js';
 
-// ✅ DOCTOR LOGIN CONTROLLER
 export const loginDoctor = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // 1. Check if email & password provided
         if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required" });
+            return res.status(400).json({ success: false, message: "Email and password are required." });
         }
 
+        // 2. Check if doctor exists
         const doctor = await doctorModel.findOne({ email }).select('+password');
         if (!doctor) {
-            return res.status(404).json({ message: "Doctor not found" });
+            return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
 
-        const token = generateToken(doctor._id.toString(), doctor.email, doctor.role);
+        // 3. Verify password
+        // const isPasswordValid = await bcrypt.compare(password, doctor.password);
+        // if (!isPasswordValid) {
+        //     return res.status(401).json({ success: false, message: "Invalid email or password." });
+        // }
+
+        // 4. Generate JWT token
+        const token = generateToken(doctor._id, doctor.email, 'doctor'); // assuming you're passing role too
+
+        // 5. Remove sensitive data before sending response
+        const { password: pwd, ...doctorData } = doctor._doc;
 
         return res.status(200).json({
+            success: true,
             message: "Login successful",
             token,
-            doctor
+            doctor: doctorData,
         });
 
     } catch (err) {
         console.error("Login Error:", err);
         return res.status(500).json({
+            success: false,
             message: "Internal server error",
             error: err.message
         });

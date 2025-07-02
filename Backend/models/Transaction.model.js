@@ -1,6 +1,6 @@
 // models/Transaction.model.js
 import mongoose from "mongoose";
-import { adminDB } from "../config/mongoose";
+import { adminDB } from "../config/mongoose.js";
 
 const transactionSchema = new mongoose.Schema(
   {

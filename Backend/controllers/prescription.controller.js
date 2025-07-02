@@ -88,22 +88,21 @@ export const addPrescription = async (req, res) => {
 // Get prescriptions for a specific report (reportId from URL param)
 export const getPrescriptions = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = "", doctorId } = req.query;
+        const { page = 1, limit = 10, search = "" } = req.query;
 
         const filter = {};
 
-        // ✅ Filter by doctorId through related reports
-        if (doctorId) {
-            if (!mongoose.Types.ObjectId.isValid(doctorId)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid doctorId format'
-                });
-            }
-
-            const reportIds = await Report.find({ doctorId }).distinct('_id');
-            filter.reportId = { $in: reportIds };
+        // ✅ Secure doctor-based filter using token
+        const doctorId = req.user?.id;
+        if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized or invalid doctor'
+            });
         }
+
+        const reportIds = await Report.find({ doctorId }).distinct('_id');
+        filter.reportId = { $in: reportIds };
 
         // ✅ Search by phone number or prescription note
         if (search) {
@@ -130,8 +129,8 @@ export const getPrescriptions = async (req, res) => {
 
         const formatted = prescriptions.map((p, index) => ({
             no: index + 1 + (page - 1) * limit,
-            patientName: `${p.reportId?.userId?.firstName || ''} ${p.reportId?.userId?.lastName || ''}`,
-            doctorName: `${p.reportId?.doctorId?.firstName || ''} ${p.reportId?.doctorId?.lastName || ''}`,
+            patientName: `${p.reportId?.userId?.firstName || ''} ${p.reportId?.userId?.lastName || ''}`.trim(),
+            doctorName: `${p.reportId?.doctorId?.firstName || ''} ${p.reportId?.doctorId?.lastName || ''}`.trim(),
             phoneNo: p.patientMobile,
             date: p.createdAt,
             prescription: p.prescriptionNote

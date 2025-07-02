@@ -1,4 +1,3 @@
-// models/BankDetails.model.js
 import mongoose from "mongoose";
 import { adminDB } from "../config/mongoose.js";
 

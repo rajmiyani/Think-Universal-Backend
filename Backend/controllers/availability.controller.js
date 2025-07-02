@@ -74,8 +74,8 @@ export const setAvailability = async (req, res) => {
 
             const newSlot = await Availability.create({
                 doctorId: doctor._id,
-                firstName: doctor.firstName,
-                lastName: doctor.lastName,
+                firstName: doctor.firstName, // ✅ Corrected
+                lastName: doctor.lastName,   // ✅ Corrected
                 startDate: date,
                 endDate: date,
                 fromTime,
@@ -110,7 +110,7 @@ export const setAvailability = async (req, res) => {
 // 📆 Get Calendar Availability
 export const getAvailabilityDoctor = async (req, res) => {
     try {
-        const { doctorId } = req.query;
+        const { doctorId } = req.body ;
 
         if (doctorId && !mongoose.Types.ObjectId.isValid(doctorId)) {
             return res.status(400).json({ success: false, message: 'Invalid doctorId format' });
@@ -145,7 +145,6 @@ export const getAvailabilityDoctor = async (req, res) => {
 
                 while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
                     const repeatedDate = current.date(originalDay);
-
                     const startDateTime = dayjs(`${repeatedDate.format('YYYY-MM-DD')}T${slot.fromTime}`);
                     const isLocked = startDateTime.diff(today, 'hour') < 24;
 
@@ -165,7 +164,7 @@ export const getAvailabilityDoctor = async (req, res) => {
                     current = current.add(1, 'month');
                 }
             } else {
-                const slotDate = dayjs(slot.date);
+                const slotDate = dayjs(slot.date || slot.startDate); // fallback if old schema
                 const startDateTime = dayjs(`${slotDate.format('YYYY-MM-DD')}T${slot.fromTime}`);
                 const isLocked = startDateTime.diff(today, 'hour') < 24;
 

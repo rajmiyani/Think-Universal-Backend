@@ -52,6 +52,27 @@ export const validateDateRange = (query) => {
 };
 
 
+export const getAppointmentStatus = async (req, res) => {
+    try {
+        const [completedCount, upcomingCount, cancelledCount] = await Promise.all([
+            appointmentModel.countDocuments({ status: "Completed" }),
+            appointmentModel.countDocuments({ status: "Upcoming" }),
+            appointmentModel.countDocuments({ status: "Cancel" }),
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                completed: completedCount,
+                upcoming: upcomingCount,
+                cancelled: cancelledCount,
+            },
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 
 // Graph 
 export const getDashboardSummary = async (req, res) => {

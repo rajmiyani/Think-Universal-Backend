@@ -4,6 +4,7 @@ import doctorModel from '../models/doctor.model.js';
 import { appointmentSchema, validateQuery } from '../validations/validationSchema.js'
 import MobileAppointment from '../models/mobileApp/appointment.js';
 import AdminAppointment from '../models/appointment.model.js';
+import dayjs from 'dayjs';
 
 // Add this function before you use it in exportCSV
 const validateExportParams = (req, res, next) => {
@@ -19,23 +20,20 @@ const validateExportParams = (req, res, next) => {
 
 export const getAppointments = async (req, res) => {
     try {
-        const { doctorId } = req.query;
+        const doctorId = req.user?.id;
 
-        // ✅ Validate doctorId if provided
-        if (doctorId && !mongoose.Types.ObjectId.isValid(doctorId)) {
-            return res.status(400).json({ success: false, message: 'Invalid doctorId format' });
+        if (!doctorId || !mongoose.Types.ObjectId.isValid(doctorId)) {
+            return res.status(400).json({ success: false, message: 'Invalid or missing doctor ID in token' });
         }
 
-        const filter = {};
-        if (doctorId) filter.doctorId = doctorId;
-
-        const appointments = await MobileAppointment.find(filter).lean();
+        // 🔁 Sync from Mobile to Admin DB
+        const mobileAppointments = await MobileAppointment.find({ doctorId }).lean();
 
         let inserted = 0;
         let skipped = 0;
         const synced = [];
 
-        for (const appt of appointments) {
+        for (const appt of mobileAppointments) {
             const exists = await AdminAppointment.findOne({
                 userId: appt.userId,
                 doctorId: appt.doctorId,
@@ -51,7 +49,7 @@ export const getAppointments = async (req, res) => {
             try {
                 const newAppt = await AdminAppointment.create({
                     ...appt,
-                    _id: undefined // Let MongoDB generate new _id
+                    _id: undefined // Let MongoDB assign new ID
                 });
 
                 inserted++;
@@ -62,28 +60,43 @@ export const getAppointments = async (req, res) => {
             }
         }
 
-        const finalFilter = doctorId ? { doctorId } : {};
-        const finalAppointments = await AdminAppointment.find(finalFilter).sort({ date: -1 });
+        // 🧹 Remove past appointments
+        const now = dayjs();
+        await AdminAppointment.deleteMany({
+            doctorId,
+            $expr: {
+                $lt: [
+                    {
+                        $dateFromString: {
+                            dateString: { $concat: ["$date", "T", "$timeSlot"] }
+                        }
+                    },
+                    now.toDate()
+                ]
+            }
+        });
+
+        // 📤 Fetch updated appointments
+        const appointments = await AdminAppointment.find({ doctorId }).sort({ date: -1 });
 
         return res.status(200).json({
             success: true,
             message: '✅ Appointment sync completed',
             inserted,
             skipped,
-            totalFetched: appointments.length,
-            appointments: finalAppointments
+            totalFetched: mobileAppointments.length,
+            appointments
         });
 
     } catch (err) {
-        console.error('❌ Sync error:', err);
+        console.error('❌ getAppointments error:', err);
         return res.status(500).json({
             success: false,
-            message: 'Sync failed',
+            message: 'Failed to fetch appointments',
             error: err.message
         });
     }
 };
-
 
 // Secure exports with rate limiting in production
 export const exportCSV = [

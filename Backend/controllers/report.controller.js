@@ -1,5 +1,4 @@
 import Report from "../models/report.model.js";
-import path from "path";
 import '../models/user.model.js';    // 👈 Ensures User model is registered
 import '../models/doctor.model.js';
 import mongoose from "mongoose";
@@ -7,7 +6,7 @@ import mongoose from "mongoose";
 // Create or update report
 export const saveReport = async (req, res) => {
     try {
-        const { doctorId, userId, appointmentId, date, status, fees, doctorNote, phoneNo } = req.body;
+        const { doctorId, userId, appointmentId, date, status, fees, doctorNote, phoneNo, prescriptionNote  } = req.body;
 
         const file = req.file ? req.file.filename : null;
 
@@ -22,6 +21,7 @@ export const saveReport = async (req, res) => {
                 fees,
                 doctorNote,
                 phoneNo,
+                prescriptionNote,
                 ...(file && { reportFile: file }),
             },
             { upsert: true, new: true }
