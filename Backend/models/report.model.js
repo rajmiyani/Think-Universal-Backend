@@ -12,8 +12,8 @@ const reportSchema = new mongoose.Schema({
   reportFile: { type: String },
   doctorNote: { type: String },
   prescriptionNote: { type: String },
-
 }, { timestamps: true });
+
 
 const Report = adminDB.models.Report || adminDB.model('Report', reportSchema);
 

@@ -1,7 +1,7 @@
+import mongoose from "mongoose";
 import Report from "../models/report.model.js";
 import '../models/user.model.js';    // 👈 Ensures User model is registered
 import '../models/doctor.model.js';
-import mongoose from "mongoose";
 
 // Create or update report
 export const saveReport = async (req, res) => {
