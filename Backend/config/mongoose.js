@@ -20,7 +20,7 @@ adminDB.on('error', (err) => {
 });
 
 // ✅ Connect to Mobile App DB (newthinkuniversal)
-export const mobileDB = mongoose.createConnection(process.env.MONGO_URI, {
+export const mobileDB = mongoose.createConnection(process.env.MONGO_URIS, {
   dbName: 'newthinkuniversal',
   useNewUrlParser: true,
   useUnifiedTopology: true,

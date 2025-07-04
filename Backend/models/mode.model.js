@@ -27,6 +27,11 @@ const modeSchema = new mongoose.Schema({
         min: [0, 'Price cannot be negative'],
         max: [100000, 'Price is unrealistically high']
     },
+    doctor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Doctor',
+        required: true
+    },
     isActive: {
         type: Boolean,
         default: true

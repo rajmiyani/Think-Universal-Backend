@@ -14,45 +14,38 @@ export const addDoctor = async (req, res) => {
             return res.status(400).json({ success: false, message: "Request body missing" });
         }
 
-        // ✅ Parse form-data values
         const parsedBody = { ...req.body };
 
         if (parsedBody.bankDetails && typeof parsedBody.bankDetails === "string") {
             parsedBody.bankDetails = JSON.parse(parsedBody.bankDetails);
         }
 
-        // ✅ Validate using Joi schema
         const { error, value } = doctorSchema.validate(parsedBody, { abortEarly: false });
         if (error) {
             const errorMessages = error.details.map((e) => e.message).join(", ");
             return res.status(400).json({ success: false, message: errorMessages });
         }
 
-        // ✅ Check for existing email
         const isEmailExist = await Doctor.findOne({ email: value.email });
         if (isEmailExist) {
             return res.status(409).json({ success: false, message: "Email already exists" });
         }
 
-        // ✅ Hash the password
-        const hashedPassword = await bcrypt.hash(value.password, 10);
 
-        // ✅ Create new doctor
         const doctor = new Doctor({
-            ...value,
-            password: hashedPassword,
-            addedBy: req.user?.id || null
+            ...value, // includes fields from validated request body
+            addedBy: req.user?.id || null,
+            role: req.user?.role === 'main' && value.role === 'main' ? 'main' : 'sub'  // 🛡️ only allow 'main' if added by a main
         });
 
-        // ✅ Store avatar if available
+
         if (req.file) {
             doctor.avatar = {
                 data: req.file.buffer,
-                contentType: req.file.mimetype,
+                contentType: req.file.mimetype
             };
         }
 
-        // ✅ Save to DB
         const savedDoctor = await doctor.save();
 
         return res.status(201).json({
@@ -70,6 +63,7 @@ export const addDoctor = async (req, res) => {
         });
     }
 };
+
 
 
 export const allDoctor = async (req, res) => {

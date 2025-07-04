@@ -13,6 +13,6 @@ const router = express.Router();
 router.post('/setAvailability', verifyTokenAvailability, setAvailability);
 
 // router.get('/:doctorId', verifyToken, authorizeRoles('doctor', 'admin'), getAvailabilityDoctor);
-router.get('/allAvailability', verifyToken,  getAvailabilityDoctor);
+router.get('/allAvailability',  getAvailabilityDoctor);
 
 export default router;

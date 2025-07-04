@@ -70,7 +70,7 @@ const doctorSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true,
-        minlength: 8,
+        // minlength: 8,
         select: false
     },
     addedBy: {
@@ -113,14 +113,14 @@ const doctorSchema = new mongoose.Schema({
 
 // 🔐 Auto-hash password before save
 doctorSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        return next();
-    } catch (err) {
-        return next(err);
-    }
+  if (!this.isModified('password')) return next();
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 doctorSchema.index({ email: 1 }, { unique: true });

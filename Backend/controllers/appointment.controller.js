@@ -18,84 +18,125 @@ const validateExportParams = (req, res, next) => {
     next();
 };
 
-export const getAppointments = async (req, res) => {
-    try {
-        const doctorId = req.user?.id;
 
-        if (!doctorId || !mongoose.Types.ObjectId.isValid(doctorId)) {
-            return res.status(400).json({ success: false, message: 'Invalid or missing doctor ID in token' });
-        }
+export const setAppointments = async (req, res) => {
+  try {
+    const doctorId = req.user?.id;
 
-        // 🔁 Sync from Mobile to Admin DB
-        const mobileAppointments = await MobileAppointment.find({ doctorId }).lean();
-
-        let inserted = 0;
-        let skipped = 0;
-        const synced = [];
-
-        for (const appt of mobileAppointments) {
-            const exists = await AdminAppointment.findOne({
-                userId: appt.userId,
-                doctorId: appt.doctorId,
-                date: appt.date,
-                timeSlot: appt.timeSlot
-            });
-
-            if (exists) {
-                skipped++;
-                continue;
-            }
-
-            try {
-                const newAppt = await AdminAppointment.create({
-                    ...appt,
-                    _id: undefined // Let MongoDB assign new ID
-                });
-
-                inserted++;
-                synced.push(newAppt);
-            } catch (err) {
-                console.warn(`❌ Failed to insert appointment ${appt._id}:`, err.message);
-                skipped++;
-            }
-        }
-
-        // 🧹 Remove past appointments
-        const now = dayjs();
-        await AdminAppointment.deleteMany({
-            doctorId,
-            $expr: {
-                $lt: [
-                    {
-                        $dateFromString: {
-                            dateString: { $concat: ["$date", "T", "$timeSlot"] }
-                        }
-                    },
-                    now.toDate()
-                ]
-            }
-        });
-
-        // 📤 Fetch updated appointments
-        const appointments = await AdminAppointment.find({ doctorId }).sort({ date: -1 });
-
-        return res.status(200).json({
-            success: true,
-            message: '✅ Appointment sync completed',
-            inserted,
-            skipped,
-            totalFetched: mobileAppointments.length,
-            appointments
-        });
-
-    } catch (err) {
-        console.error('❌ getAppointments error:', err);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch appointments',
-            error: err.message
-        });
+    if (!doctorId || !mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).json({ success: false, message: "Invalid or missing doctor ID" });
     }
+
+    const appointmentData = {
+      doctorId,
+      userId: "64bdf1c7c0a7c57a7b5a8123",
+      date: "2025-07-05",
+      timeSlot: "64c122b8c0a7c57a7b5a8111",
+      modeId: "64c33313c0a7c57a7b5a8133",
+      price: 500,
+      name: "John Doe",
+      ageRange: "30-35",
+      contactNumber: "9876543210",
+      gender: "Male",
+      problem: "Headache",
+      paymentMode: "UPI",
+      paymentStatus: "Done",
+      status: "Upcoming",
+      isOther: false,
+    };
+
+    console.log("📦 Saving appointment data:", appointmentData);
+
+    const newAppointment = await MobileAppointment.create(appointmentData);
+
+    console.log("✅ Saved appointment:", newAppointment);
+
+    return res.status(201).json({
+      success: true,
+      message: "Appointment successfully set in mobile DB",
+      appointment: newAppointment
+    });
+
+  } catch (error) {
+    console.error("❌ setAppointments error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to set appointment",
+      error: error.message
+    });
+  }
+};
+
+export const getAppointments = async (req, res) => {
+  try {
+    const doctorId = req.user?.id;
+
+    if (!doctorId || !mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).json({ success: false, message: 'Invalid or missing doctor ID in token' });
+    }
+
+    // 🔁 Step 1: Fetch all mobile appointments
+    const mobileAppointments = await MobileAppointment.find({ doctorId }).lean();
+
+    let inserted = 0;
+    let skipped = 0;
+    const synced = [];
+
+    for (const appt of mobileAppointments) {
+      const exists = await AdminAppointment.findOne({
+        userId: appt.userId,
+        doctorId: appt.doctorId,
+        date: appt.date,
+        timeSlot: appt.timeSlot
+      });
+
+      if (exists) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const newAppt = await AdminAppointment.create({
+          ...appt,
+          _id: undefined // Let MongoDB assign new _id
+        });
+
+        inserted++;
+        synced.push(newAppt);
+      } catch (err) {
+        console.warn(`❌ Failed to insert appointment ${appt._id}:`, err.message);
+        skipped++;
+      }
+    }
+
+    // 🧹 Step 2: Delete expired appointments based on date only
+    const today = dayjs().format('YYYY-MM-DD');
+
+    await AdminAppointment.deleteMany({
+      doctorId,
+      date: { $lt: today }
+    });
+
+    // 📤 Step 3: Fetch updated list of appointments
+    const appointments = await AdminAppointment.find({ doctorId }).sort({ date: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: '✅ Appointment sync completed',
+      inserted,
+      skipped,
+      totalFetched: mobileAppointments.length,
+      appointments
+    });
+
+  } catch (err) {
+    console.error('❌ getAppointments error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch appointments',
+      error: err.message
+    });
+  }
 };
 
 // Secure exports with rate limiting in production

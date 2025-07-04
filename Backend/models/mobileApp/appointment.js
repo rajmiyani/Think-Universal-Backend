@@ -91,4 +91,4 @@ const appointmentSchema = new mongoose.Schema(
     }
 );
 
-export default mobileDB.model('Appointment', appointmentSchema);
+export default mobileDB.model('appointment', appointmentSchema);

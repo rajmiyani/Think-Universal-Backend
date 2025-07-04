@@ -88,3 +88,40 @@ export const getAllPatients = async (req, res) => {
     });
   }
 };
+
+
+export const createPatient = async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, gender, age, address } = req.body;
+
+    // Simple Validation (Backend Safety)
+    if (!email || !phone) {
+      return res.status(400).json({ success: false, message: 'Email and Phone are required' });
+    }
+
+    const existingPatient = await AdminPatient.findOne({ email });
+    if (existingPatient) {
+      return res.status(409).json({ success: false, message: 'Patient with this email already exists' });
+    }
+
+    const newPatient = new AdminPatient({
+      firstName,
+      lastName,
+      email,
+      phone,
+      gender,
+      age,
+      address
+    });
+
+    await newPatient.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Patient created successfully',
+      patient: newPatient
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error: ' + error.message });
+  }
+};

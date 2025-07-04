@@ -48,61 +48,45 @@ const availabilitySchema = new mongoose.Schema({
       message: 'Date must be today or in the future'
     }
   },
-  fromTime: {
-    type: String,
-    required: [true, 'From time is required'],
-    validate: {
-      validator: function (v) {
-        return timeRegex.test(v);
+
+  // ✅ Add this field to support multiple time slots
+  slots: [
+    {
+      fromTime: {
+        type: String,
+        required: true,
+        validate: {
+          validator: (v) => timeRegex.test(v),
+          message: 'Invalid fromTime format'
+        }
       },
-      message: 'From time must be in HH:MM 24-hour format'
-    }
-  },
-  toTime: {
-    type: String,
-    required: [true, 'To time is required'],
-    validate: [
-      {
-        validator: function (v) {
-          return timeRegex.test(v);
-        },
-        message: 'To time must be in HH:MM 24-hour format'
-      },
-      {
-        validator: function (v) {
-          if (!this.fromTime || !timeRegex.test(v) || !timeRegex.test(this.fromTime)) return true;
-          const [fromH, fromM] = this.fromTime.split(':').map(Number);
-          const [toH, toM] = v.split(':').map(Number);
-          return toH > fromH || (toH === fromH && toM > fromM);
-        },
-        message: 'To time must be after from time'
+      toTime: {
+        type: String,
+        required: true,
+        validate: {
+          validator: function (v) {
+            return (
+              timeRegex.test(v) &&
+              v > this.fromTime // compares string "HH:mm"
+            );
+          },
+          message: 'toTime must be after fromTime'
+        }
       }
-    ]
-  },
-  isMonthly: {
-    type: Boolean,
-    default: false
-  },
-  // endMonth: {
-  //   type: String,
-  //   required: function () {
-  //     return this.isMonthly === true;
-  //   },
-  //   validate: [
-  //     {
-  //       validator: function (v) {
-  //         return /^20\d{2}-(0[1-9]|1[0-2])$/.test(v);
-  //       },
-  //       message: props => "${props.value}" // is not a valid month format(YYYY- MM)
-  //     }
-  //   ]
+    }
+  ],
+
+
+  // isMonthly: {
+  //   type: Boolean,
+  //   default: false
   // },
+
   modes: {
     audio: { type: Boolean, default: false },
     chat: { type: Boolean, default: false },
     videoCall: { type: Boolean, default: false }
   }
-
 }, { timestamps: true });
 
 export default adminDB.model('Availability', availabilitySchema);
