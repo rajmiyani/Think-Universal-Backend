@@ -6,30 +6,61 @@ import '../models/doctor.model.js';
 // Create or update report
 export const saveReport = async (req, res) => {
     try {
-        const { doctorId, userId, appointmentId, date, status, fees, doctorNote, phoneNo, prescriptionNote  } = req.body;
+        const {
+            doctorId,
+            userId,
+            appointmentId,
+            date,
+            status,
+            fees,
+            doctorNote,
+            phoneNo,
+            reportFile,
+            prescriptionNote
+        } = req.body;
+
+        console.log(req.body);
+        
 
         const file = req.file ? req.file.filename : null;
 
+        // 🛡️ Defensive coding: avoid sending undefined fields
+        const updateFields = {
+            doctorId,
+            userId,
+            appointmentId,
+            date,
+            status,
+            fees,
+            doctorNote,
+            phoneNo,
+            ...(prescriptionNote !== undefined && { prescriptionNote }),
+            ...(file && { reportFile: file }),
+        };
+
+        console.log(updateFields);
+        
+
         const report = await Report.findOneAndUpdate(
             { appointmentId },
-            {
-                doctorId,
-                userId,
-                appointmentId,
-                date,
-                status,
-                fees,
-                doctorNote,
-                phoneNo,
-                prescriptionNote,
-                ...(file && { reportFile: file }),
-            },
+            updateFields,
             { upsert: true, new: true }
         );
+        console.log(report,"Reports");
+        
 
-        res.status(200).json({ success: true, message: "Report saved successfully", data: report });
+        res.status(200).json({
+            success: true,
+            message: "Report saved successfully",
+            data: report
+        });
+
     } catch (err) {
-        res.status(500).json({ success: false, message: "Error saving report", error: err.message });
+        res.status(500).json({
+            success: false,
+            message: "Error saving report",
+            error: err.message
+        });
     }
 };
 

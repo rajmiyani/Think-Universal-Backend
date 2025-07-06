@@ -67,6 +67,6 @@ const patientSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-patientSchema.plugin(mongoosePaginate);
+patientSchema.plugin(mongoosePaginate); 
 
 export default adminDB.model('Patient', patientSchema);
