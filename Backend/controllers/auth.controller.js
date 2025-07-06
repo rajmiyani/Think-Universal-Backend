@@ -19,9 +19,11 @@ export const loginDoctor = async (req, res) => {
 
         // 3. Verify password
         // const isPasswordValid = await bcrypt.compare(password, doctor.password);
-        // if (!isPasswordValid) {
-        //     return res.status(401).json({ success: false, message: "Invalid email or password." });
-        // }
+const isPasswordValid = await bcrypt.compare(password.trim(), doctor.password.trim());
+
+        if (!isPasswordValid) {
+            return res.status(401).json({ success: false, message: "Invalid email or password." });
+        }
 
         // 4. Generate JWT token
         const token = generateToken(doctor._id, doctor.email, 'doctor'); // assuming you're passing role too

@@ -5,85 +5,42 @@ import mongoose from 'mongoose';
 // --- Validation Schemas ---
 
 export const doctorSchema = Joi.object({
-    firstName: Joi.string()
-        .min(2)
-        .max(15)
-        .required(),
-    lastName: Joi.string()
-        .min(2)
-        .max(15)
-        .required(),
-    email: Joi.string()
-        .email()
-        .required(),
-    phoneNo: Joi.string()
-        .pattern(/^\d{10,15}$/)
-        .required()
-        .messages({
-            'string.pattern.base': 'Phone number must be 10 to 15 digits'
-        }),
-    destination: Joi.string()
-        .min(2)
-        .max(50)
-        .required(),
-    totalPatient: Joi.number()
-        .min(0)
-        .default(0),
-    experience: Joi.number()
-        .min(0)
-        .max(80)
-        .required(),
-    rating: Joi.number()
-        .min(0)
-        .max(5)
-        .default(0),
-    gender: Joi.string()
-        .valid('Male', 'Female', 'Other')
-        .required(),
-    review: Joi.string()
-        .max(1000)
-        .allow(''),
-    img: Joi.string()
-        .allow('', null),
-    about: Joi.string()
-        .max(2000)
-        .allow(''),
-    password: Joi.string()
-        .min(6)
-        .required(),
-    // addedBy: Joi.string()
-    //     .optional()
-    //     .allow(null, ''),
-    bankDetails: Joi.object({
-        accountNumber: Joi.string()
-            .pattern(/^\d{9,18}$/)
-            .required()
-            .messages({
-                'string.pattern.base': 'Account number must be 9 to 18 digits'
-            }),
-        ifscCode: Joi.string()
-            .pattern(/^[A-Z]{4}0[A-Z0-9]{6}$/)
-            .required()
-            .messages({
-                'string.pattern.base': 'Invalid IFSC code format'
-            }),
-        bankName: Joi.string()
-            .min(2)
-            .max(100)
-            .required(),
-        upiId: Joi.string()
-            .pattern(/^[\w.-]+@[\w.-]+$/)
-            .optional()
-            .allow('', null)
-            .messages({
-                'string.pattern.base': 'Invalid UPI ID format'
-            })
-    }).optional(),
+  firstName: Joi.string().min(2).max(15).required(),
+  lastName: Joi.string().min(2).max(15).required(),
+  email: Joi.string().email().required(),
+  phoneNo: Joi.string().pattern(/^\d{10,15}$/).required()
+    .messages({ 'string.pattern.base': 'Phone number must be 10 to 15 digits' }),
 
-    role: Joi.string()
-        .valid('main', 'sub')
-        .default('doctor')
+  // ✅ ADD these fields
+  speciality: Joi.string().max(100).allow('', null),
+  degree: Joi.string().max(100).allow('', null),
+  state: Joi.string().max(100).allow('', null),
+  city: Joi.string().max(100).allow('', null),
+  bio: Joi.string().max(2000).allow('', null),
+
+  destination: Joi.string().min(2).max(50).required(),
+  totalPatient: Joi.number().min(0).default(0),
+  experience: Joi.number().min(0).max(80).required(),
+  rating: Joi.number().min(0).max(5).default(0),
+  gender: Joi.string().valid('Male', 'Female', 'Other').required(),
+  review: Joi.string().max(1000).allow(''),
+  img: Joi.string().allow('', null),
+  about: Joi.string().max(2000).allow(''),
+  password: Joi.string().min(6).required(),
+
+  bankDetails: Joi.object({
+    accountNumber: Joi.string().pattern(/^\d{9,18}$/).required()
+      .messages({ 'string.pattern.base': 'Account number must be 9 to 18 digits' }),
+    ifscCode: Joi.string().pattern(/^[A-Z]{4}0[A-Z0-9]{6}$/).required()
+      .messages({ 'string.pattern.base': 'Invalid IFSC code format' }),
+    bankName: Joi.string().min(2).max(100).required(),
+    upiId: Joi.string().pattern(/^[\w.-]+@[\w.-]+$/).optional().allow('', null)
+      .messages({ 'string.pattern.base': 'Invalid UPI ID format' })
+  }).optional(),
+
+  role: Joi.string().valid('main', 'sub').default('sub')
 });
+
 
 export const bankDetailsSchema = Joi.object({
     accountNumber: Joi.string().pattern(/^\d{9,18}$/).required(),
